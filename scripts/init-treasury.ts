@@ -45,6 +45,9 @@ const TOKENS: { symbol: string; mint: string }[] = [
   { symbol: "WIF",    mint: "EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm" },
   { symbol: "POPCAT", mint: "7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr" },
   { symbol: "MEW",    mint: "MEW1gQWJ3nEXg2qgERiKu7FAFj79PHvQVREQUzScPP5" },
+  // ── Bridged assets (Wormhole / Portal) ───────────────────────────────────
+  { symbol: "WBTC",   mint: "3NZ9JMVBmGAqocybic2c7LQCJScmgsAZ6vQqTDzcqmJh" },
+  { symbol: "WETH",   mint: "7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs" },
 ];
 
 function loadWallet(): Keypair {
