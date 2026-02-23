@@ -1,0 +1,3 @@
+[submodule "plugin-a2a-swap"]
+	path = plugin-a2a-swap
+	url = https://github.com/liqdlad-rgb/plugin-a2a-swap.git
