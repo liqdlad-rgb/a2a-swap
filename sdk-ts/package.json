@@ -1,5 +1,5 @@
 {
-  "name": "@a2a-swap/sdk",
+  "name": "@liqdlad/a2a-swap-sdk",
   "version": "0.1.0",
   "description": "A2A-Swap TypeScript SDK — agent-native constant-product AMM client for Solana",
   "author": "A2A-Swap Contributors",
