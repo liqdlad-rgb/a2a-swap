@@ -1,0 +1,25 @@
+[package]
+name = "a2a-swap-cli"
+version = "0.1.0"
+edition = "2021"
+description = "A2A-Swap CLI — command-line interface for the A2A-Swap agent-native AMM on Solana"
+license = "MIT"
+repository = "https://github.com/a2a-swap/a2a-swap"
+homepage = "https://github.com/a2a-swap/a2a-swap"
+keywords = ["solana", "amm", "defi", "agent", "swap"]
+categories = ["command-line-utilities", "cryptography::cryptocurrencies"]
+readme = "../README.md"
+rust-version = "1.75"
+
+[[bin]]
+name = "a2a-swap"
+path = "src/main.rs"
+
+[dependencies]
+clap          = { version = "4", features = ["derive", "env"] }
+tokio         = { version = "1", features = ["full"] }
+serde         = { version = "1", features = ["derive"] }
+serde_json    = "1"
+anyhow        = "1"
+solana-sdk    = "2.1"
+solana-client = "2.1"

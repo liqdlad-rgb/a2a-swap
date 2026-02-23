@@ -1,0 +1,41 @@
+{
+  "name": "@a2a-swap/sdk",
+  "version": "0.1.0",
+  "description": "A2A-Swap TypeScript SDK — agent-native constant-product AMM client for Solana",
+  "author": "A2A-Swap Contributors",
+  "license": "MIT",
+  "homepage": "https://github.com/a2a-swap/a2a-swap#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/a2a-swap/a2a-swap.git",
+    "directory": "sdk-ts"
+  },
+  "bugs": {
+    "url": "https://github.com/a2a-swap/a2a-swap/issues"
+  },
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "README.md"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": ["solana", "amm", "defi", "agent", "swap", "ai", "elizaos", "langgraph", "autonomous"],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.30.1",
+    "@solana/web3.js": "^1.95.4",
+    "@solana/spl-token": "^0.4.9"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "@types/node": "^20.0.0"
+  }
+}
