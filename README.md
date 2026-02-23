@@ -36,21 +36,21 @@ A2A-Swap is designed for the case where the **caller is a bot**: no UI, determin
 cargo install a2a-swap-cli
 
 # Or build from source
-git clone https://github.com/a2a-swap/a2a-swap
+git clone https://github.com/liqdlad-rgb/a2a-swap
 cd a2a-swap
 cargo build --release -p a2a-swap-cli
 # Binary at ./target/release/a2a-swap
 ```
 
 Pre-built binaries for Linux, macOS, and Windows are also available on the
-[Releases page](https://github.com/a2a-swap/a2a-swap/releases).
+[Releases page](https://github.com/liqdlad-rgb/a2a-swap/releases).
 
 ### TypeScript SDK
 
 ```bash
-npm install @a2a-swap/sdk @solana/web3.js @solana/spl-token
+npm install @liqdlad/a2a-swap-sdk @solana/web3.js @solana/spl-token
 # or
-yarn add @a2a-swap/sdk @solana/web3.js @solana/spl-token
+yarn add @liqdlad/a2a-swap-sdk @solana/web3.js @solana/spl-token
 ```
 
 ### Rust SDK
@@ -416,8 +416,13 @@ await sendAndConfirmTransaction(conn, tx, [agentKeypair, approverKeypair]);
 
 ### ElizaOS (TypeScript)
 
+```bash
+elizaos plugins add plugin-a2a-swap
+# or manually: npm install @liqdlad/plugin-a2a-swap
+```
+
 ```typescript
-import { a2aSwapPlugin } from '@a2a-swap/sdk/elizaos';
+import { a2aSwapPlugin } from '@liqdlad/plugin-a2a-swap';
 import { AgentRuntime } from '@elizaos/core';
 
 const runtime = new AgentRuntime({
@@ -439,7 +444,7 @@ Registers five actions automatically:
 ### TypeScript SDK
 
 ```typescript
-import { A2ASwapClient } from '@a2a-swap/sdk';
+import { A2ASwapClient } from '@liqdlad/a2a-swap-sdk';
 import { Keypair, PublicKey } from '@solana/web3.js';
 
 const client = A2ASwapClient.mainnet();
@@ -519,25 +524,25 @@ async fn main() -> anyhow::Result<()> {
 
 ## Roadmap
 
-### v1.0 (current)
-- [x] Constant-product AMM (x·y=k)
+### v0.1 (current — mainnet)
+- [x] Constant-product AMM (x·y=k), deployed on mainnet-beta
 - [x] LP fee auto-compound
 - [x] Approval mode (co-signature, no on-chain state)
 - [x] CLI — `simulate`, `convert`, `create-pool`, `provide`, `my-positions`, `pool-info`, `my-fees`
-- [x] TypeScript SDK + ElizaOS plugin
-- [x] Rust SDK
-- [x] Integration test suite
+- [x] TypeScript SDK (`@liqdlad/a2a-swap-sdk`) published to npm
+- [x] ElizaOS plugin (`plugin-a2a-swap`) published to elizaos registry
+- [x] Rust SDK (`a2a-swap-sdk`) published to crates.io
+- [x] CLI (`a2a-swap-cli`) published to crates.io
+- [x] Integration test suite (29/29 passing)
+- [x] SOL/USDC pool live on mainnet
 
-### v1.1 (planned)
+### v1.0 (planned)
 - [ ] **CLI `remove` and `claim-fees` commands** — wrappers for the existing on-chain instructions
 - [ ] **Time-weighted average price (TWAP)** oracle — 30-slot ring buffer, readable by any agent
 - [ ] **Permissioned pools** — optional LP whitelist (enterprise / DAO use)
 - [ ] **Multi-hop routing** — chain two pools in one transaction for pairs without a direct pool
-- [ ] **Mainnet deployment** — production program ID, audited bytecode
-- [ ] **Publish `@a2a-swap/sdk`** to npm registry
-- [ ] **Publish `a2a-swap-sdk`** to crates.io
-- [ ] **Publish `a2a-swap-cli`** to crates.io
 - [ ] **Webhook approval backend** — reference server for `--approval-mode webhook`
+- [ ] **Security audit**
 
 ---
 
