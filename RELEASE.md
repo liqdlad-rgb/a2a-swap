@@ -209,32 +209,26 @@ When cutting a new version (e.g. v0.2.0):
 
 ---
 
-## Devnet deployment (when faucet is available)
+## Mainnet deployment
 
-When you have a funded Solana keypair on devnet (5+ SOL needed for the 388 KB binary):
+When you have a funded Solana keypair on mainnet-beta (5+ SOL needed for the 388 KB binary):
 
 ```bash
 # Check balance
-solana balance --url devnet
+solana balance --url mainnet-beta
 
 # Deploy
-anchor deploy --provider.cluster devnet
+anchor deploy --provider.cluster mainnet
 
 # Verify program is live
-solana program show 8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq --url devnet
+solana program show 8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq --url mainnet-beta
 
 # View on Solscan
-open https://solscan.io/account/8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq?cluster=devnet
+open https://solscan.io/account/8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq
 ```
 
 **Deployer wallet:** `36mRf9zkPpzFWeAaFtYgEutpTXWeK26k4fGNPh94G6AU`
 **Program keypair:** `target/deploy/a2a_swap-keypair.json` (keep secret — controls upgrades)
 
-To fund the deployer on devnet:
-- Web faucet: https://faucet.solana.com (paste the address above, request 5 SOL)
-- QuickNode devnet faucet: https://faucet.quicknode.com/solana/devnet
-- Transfer from another funded devnet wallet:
-  ```bash
-  solana transfer 36mRf9zkPpzFWeAaFtYgEutpTXWeK26k4fGNPh94G6AU 5 \
-    --url devnet --keypair <other-wallet.json>
-  ```
+To fund the deployer on mainnet-beta, transfer 5+ SOL to:
+`36mRf9zkPpzFWeAaFtYgEutpTXWeK26k4fGNPh94G6AU`

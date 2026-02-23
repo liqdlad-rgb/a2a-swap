@@ -39,12 +39,12 @@ const PROTOCOL_FEE_BPS: u128         = 20;       // 0.020 %
 const PROTOCOL_FEE_DENOMINATOR: u128 = 100_000;
 const BPS_DENOMINATOR: u128          = 10_000;
 
-// ─── Token symbol registry (devnet) ──────────────────────────────────────────
+// ─── Token symbol registry (mainnet-beta) ────────────────────────────────────
 
 const KNOWN_TOKENS: &[(&str, &str)] = &[
     ("SOL",  "So11111111111111111111111111111111111111112"),
-    ("USDC", "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU"),
-    ("USDT", "Ez2zVjw85tZan1ycnJ5PywNNxR6Gm4jbXQtZKyQNu3wh"),
+    ("USDC", "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"),
+    ("USDT", "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB"),
 ];
 
 /// Resolve a symbol (SOL, USDC, USDT) or raw base-58 mint address to a Pubkey.
@@ -436,7 +436,7 @@ fn print_banner() {
     println!("  A2A-Swap  v{ver}  ·  agent-native AMM on Solana");
     println!("  {}", "─".repeat(62));
     println!("  Program   {PROGRAM_ID}");
-    println!("  Network   Solana devnet / mainnet-beta");
+    println!("  Network   Solana mainnet-beta");
     println!("  Fees      0.020% protocol  +  0.01%–1.00% LP (per pool)");
     println!("  Docs      https://github.com/a2a-swap/a2a-swap");
     println!();
@@ -457,7 +457,7 @@ fn print_banner() {
     long_version = concat!(
         env!("CARGO_PKG_VERSION"), "\n",
         "Program:      8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq\n",
-        "Network:      Solana devnet / mainnet-beta\n",
+        "Network:      Solana mainnet-beta\n",
         "Protocol fee: 0.020%  (20 / 100_000 of amount_in)\n",
         "LP fee range: 1–100 bps  (0.01%–1.00%, set per pool)\n",
         "License:      MIT",
@@ -466,7 +466,7 @@ fn print_banner() {
     about   = "Agent-native constant-product AMM — zero-human-in-the-loop token swaps on Solana.",
     after_help = "\
 ENVIRONMENT:
-  A2A_RPC_URL    Solana JSON-RPC endpoint  [default: https://api.devnet.solana.com]
+  A2A_RPC_URL    Solana JSON-RPC endpoint  [default: https://api.mainnet-beta.solana.com]
   A2A_KEYPAIR    Path to Ed25519 keypair JSON  [default: ~/.config/solana/id.json]
 
 QUICK START:
@@ -475,7 +475,7 @@ QUICK START:
   a2a-swap my-fees
 
 PROGRAM:
-  8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq  (Solana devnet / mainnet-beta)"
+  8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq  (Solana mainnet-beta)"
 )]
 struct Cli {
     /// Solana JSON-RPC endpoint
@@ -483,7 +483,7 @@ struct Cli {
         long,
         global     = true,
         value_name = "URL",
-        default_value = "https://api.devnet.solana.com",
+        default_value = "https://api.mainnet-beta.solana.com",
         env = "A2A_RPC_URL"
     )]
     rpc_url: String,

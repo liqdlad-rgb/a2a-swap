@@ -15,7 +15,7 @@
 //! # Environment
 //!
 //! ```bash
-//! export SOLANA_RPC_URL="https://api.devnet.solana.com"
+//! export SOLANA_RPC_URL="https://api.mainnet-beta.solana.com"
 //! export AGENT_KEYPAIR_PATH="$HOME/.config/solana/id.json"
 //! ```
 
@@ -33,7 +33,7 @@ use solana_sdk::{
     signature::{read_keypair_file, Keypair, Signer},
 };
 
-// ─── Well-known mint addresses (devnet) ───────────────────────────────────────
+// ─── Well-known mint addresses (mainnet-beta) ────────────────────────────────
 
 const WSOL_MINT:  &str = "So11111111111111111111111111111111111111112";
 const USDC_MINT:  &str = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
@@ -42,7 +42,7 @@ const USDC_MINT:  &str = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v";
 
 fn rpc_url() -> String {
     std::env::var("SOLANA_RPC_URL")
-        .unwrap_or_else(|_| "https://api.devnet.solana.com".into())
+        .unwrap_or_else(|_| "https://api.mainnet-beta.solana.com".into())
 }
 
 fn load_keypair() -> Keypair {

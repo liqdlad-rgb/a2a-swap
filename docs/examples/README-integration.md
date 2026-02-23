@@ -4,7 +4,7 @@ Lightweight constant-product AMM for autonomous AI agents on Solana.
 Zero human involvement required by default.
 
 **Program ID:** `8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq`
-**Network:** Solana (devnet / mainnet-beta)
+**Network:** Solana mainnet-beta
 **Protocol fee:** 0.020% (to treasury)
 **LP fee range:** 1–100 bps (0.01%–1.00%), set per pool
 
@@ -24,7 +24,7 @@ npm install @a2a-swap/sdk @solana/web3.js @solana/spl-token
 import { A2ASwapClient } from '@a2a-swap/sdk';
 import { PublicKey } from '@solana/web3.js';
 
-const client = A2ASwapClient.devnet();
+const client = A2ASwapClient.mainnet();
 
 const sim = await client.simulate({
   mintIn:   new PublicKey('So11111111111111111111111111111111111111112'),
@@ -132,7 +132,7 @@ use std::str::FromStr;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let client = A2ASwapClient::devnet();
+    let client = A2ASwapClient::mainnet();
 
     let sim = client.simulate(SimulateParams {
         mint_in:  Pubkey::from_str("So11111111111111111111111111111111111111112")?,
@@ -153,7 +153,7 @@ use a2a_swap_sdk::{A2ASwapClient, SwapParams};
 use solana_sdk::signature::{read_keypair_file, Signer};
 
 let payer  = read_keypair_file("~/.config/solana/id.json")?;
-let client = A2ASwapClient::devnet();
+let client = A2ASwapClient::mainnet();
 
 let result = client.convert(&payer, SwapParams {
     mint_in:          sol_mint,

@@ -11,6 +11,9 @@ a2a_swap = "8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq"
 [programs.devnet]
 a2a_swap = "8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq"
 
+[programs.mainnet]
+a2a_swap = "8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq"
+
 [registry]
 url = "https://api.apr.dev"
 

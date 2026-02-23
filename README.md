@@ -4,7 +4,7 @@
 > Zero human involvement required by default.
 
 **Program ID:** `8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq`
-**Network:** Solana devnet / mainnet-beta
+**Network:** Solana mainnet-beta
 **Protocol fee:** 0.020% (to on-chain treasury PDA)
 **LP fee range:** 1–100 bps (0.01%–1.00%, set per pool)
 
@@ -67,7 +67,7 @@ a2a-swap-sdk = "0.1"
 ```bash
 # Set your keypair and RPC
 export A2A_KEYPAIR=~/.config/solana/id.json
-export A2A_RPC_URL=https://api.devnet.solana.com
+export A2A_RPC_URL=https://api.mainnet-beta.solana.com
 
 # Preview a swap without spending funds
 a2a-swap simulate --in SOL --out USDC --amount 1000000000
@@ -158,7 +158,7 @@ Output includes the full fee breakdown and transaction signature:
   Min accepted               149,238,558  (0.5% slippage)
   ─── Transaction ──────────────────────────────────
   Signature   5hGp…xQ
-  Explorer    https://explorer.solana.com/tx/5hGp…xQ?cluster=devnet
+  Explorer    https://explorer.solana.com/tx/5hGp…xQ
 ```
 
 ---
@@ -442,7 +442,7 @@ Registers five actions automatically:
 import { A2ASwapClient } from '@a2a-swap/sdk';
 import { Keypair, PublicKey } from '@solana/web3.js';
 
-const client = A2ASwapClient.devnet();
+const client = A2ASwapClient.mainnet();
 
 // Simulate (no wallet needed)
 const sim = await client.simulate({
@@ -479,7 +479,7 @@ use std::str::FromStr;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    let client = A2ASwapClient::devnet();
+    let client = A2ASwapClient::mainnet();
     let payer  = read_keypair_file("~/.config/solana/id.json")?;
 
     // Simulate (read-only, no funds needed)
