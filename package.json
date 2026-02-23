@@ -5,6 +5,7 @@
     "test:local:fast": "SKIP_BUILD=1 bash test-local.sh",
     "test:unit": "ANCHOR_PROVIDER_URL=http://127.0.0.1:8899 ANCHOR_WALLET=~/.config/solana/id.json yarn run ts-mocha -p ./tsconfig.json -t 1000000 'tests/a2a-swap.ts'",
     "test:sdk": "ANCHOR_PROVIDER_URL=http://127.0.0.1:8899 ANCHOR_WALLET=~/.config/solana/id.json yarn run ts-mocha -p ./tsconfig.json -t 1000000 'tests/cli-integration.test.ts'",
+    "smoke:devnet": "ANCHOR_WALLET=~/.config/solana/id.json npx ts-node -p tsconfig.scripts.json scripts/smoke-devnet.ts",
     "lint:fix": "prettier */*.js \"*/**/*{.js,.ts}\" -w",
     "lint": "prettier */*.js \"*/**/*{.js,.ts}\" --check"
   },
