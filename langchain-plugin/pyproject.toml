@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "a2a-swap-langchain"
+version = "0.1.0"
+description = "LangChain and CrewAI tools for A2A-Swap — autonomous token swaps and liquidity on Solana"
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "A2A-Swap Contributors" }]
+keywords = ["langchain", "crewai", "solana", "amm", "defi", "swap", "agent", "autonomous", "ai"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Libraries",
+]
+requires-python = ">=3.10"
+dependencies = [
+    "langchain-core>=0.2.0",
+    "pydantic>=2.0",
+]
+
+[project.optional-dependencies]
+crewai = ["crewai>=0.30.0"]
+dev = ["pytest", "pytest-asyncio", "langchain-openai"]
+
+[project.urls]
+Homepage = "https://github.com/liqdlad-rgb/a2a-swap"
+Repository = "https://github.com/liqdlad-rgb/a2a-swap"
+"Bug Tracker" = "https://github.com/liqdlad-rgb/a2a-swap/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["a2a_swap_langchain"]
