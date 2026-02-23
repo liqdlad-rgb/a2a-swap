@@ -1,7 +1,7 @@
 """
 LangChain + CrewAI tools for A2A-Swap.
 
-All five tools work identically in both frameworks:
+All seven tools work identically in both frameworks:
 
   LangChain:
       from a2a_swap_langchain import A2ASimulateTool, A2ASwapTool
@@ -79,6 +79,25 @@ class _ProvideInput(BaseModel):
         description="If true, accrued trading fees are automatically reinvested as "
                     "additional LP shares instead of accumulating for manual claim.",
     )
+
+
+class _RemoveLiquidityInput(BaseModel):
+    mint_a: str = Field(description="First token mint of the pool (symbol or base-58).")
+    mint_b: str = Field(description="Second token mint of the pool (symbol or base-58).")
+    lp_shares: int = Field(description="Number of LP shares to burn (use a2a_my_positions to check balance).")
+    min_a: Optional[int] = Field(
+        default=0,
+        description="Minimum token A to accept in atomic units (slippage guard). Default 0 = no guard.",
+    )
+    min_b: Optional[int] = Field(
+        default=0,
+        description="Minimum token B to accept in atomic units (slippage guard). Default 0 = no guard.",
+    )
+
+
+class _ClaimFeesInput(BaseModel):
+    mint_a: str = Field(description="First token mint of the pool (symbol or base-58).")
+    mint_b: str = Field(description="Second token mint of the pool (symbol or base-58).")
 
 
 class _PoolInfoInput(BaseModel):
@@ -243,6 +262,109 @@ class A2AProvideLiquidityTool(BaseTool):
             return f"Provide liquidity failed: {exc}"
 
 
+class A2ARemoveLiquidityTool(BaseTool):
+    """
+    Burn LP shares and withdraw proportional tokens from an A2A-Swap pool.
+
+    Fees are synced before withdrawal but not transferred — use A2AClaimFeesTool
+    to collect them. Requires a funded agent wallet.
+    """
+
+    name: str = "a2a_remove_liquidity"
+    description: str = (
+        "Withdraw liquidity from an A2A-Swap pool by burning LP shares. "
+        "Returns proportional token A and token B amounts to the agent's wallet. "
+        "Use a2a_my_positions to check your current LP share balance first. "
+        "Optional min_a / min_b provide slippage guards (reject if output is below). "
+        "Fees are synced but NOT transferred — run a2a_claim_fees after to collect them. "
+        "Requires: A2A_KEYPAIR environment variable."
+    )
+    args_schema: Type[BaseModel] = _RemoveLiquidityInput
+
+    keypair: Optional[str] = None
+    rpc_url: Optional[str] = None
+
+    def _run(
+        self,
+        mint_a: str,
+        mint_b: str,
+        lp_shares: int,
+        min_a: Optional[int] = 0,
+        min_b: Optional[int] = 0,
+    ) -> str:
+        try:
+            args = [
+                "--pair", f"{mint_a}-{mint_b}",
+                "--shares", str(lp_shares),
+            ]
+            if min_a:
+                args += ["--min-a", str(min_a)]
+            if min_b:
+                args += ["--min-b", str(min_b)]
+
+            data = _cli.run(
+                "remove-liquidity",
+                *args,
+                keypair=self.keypair,
+                rpc_url=self.rpc_url,
+            )
+            return (
+                f"Liquidity removed from {mint_a}/{mint_b} pool\n"
+                f"  LP shares burnt:  {data.get('lp_shares', lp_shares)}\n"
+                f"  Expected A:       {data.get('expected_a')}\n"
+                f"  Expected B:       {data.get('expected_b')}\n"
+                f"  Position:         {data.get('position')}\n"
+                f"  Signature:        {data.get('tx')}\n"
+                f"  Run a2a_claim_fees to collect any accrued fees."
+            )
+        except RuntimeError as exc:
+            return f"Remove liquidity failed: {exc}"
+
+
+class A2AClaimFeesTool(BaseTool):
+    """
+    Claim accrued LP trading fees for one A2A-Swap pool position.
+
+    If the position has auto_compound enabled, fees are reinvested as
+    additional LP shares instead of being transferred out.
+    Requires a funded agent wallet.
+    """
+
+    name: str = "a2a_claim_fees"
+    description: str = (
+        "Claim accrued LP trading fees from an A2A-Swap pool position. "
+        "If auto_compound is enabled, fees are converted to additional LP shares "
+        "instead of being sent to the wallet. "
+        "Use a2a_my_fees first to preview claimable amounts without sending a transaction. "
+        "Requires: A2A_KEYPAIR environment variable."
+    )
+    args_schema: Type[BaseModel] = _ClaimFeesInput
+
+    keypair: Optional[str] = None
+    rpc_url: Optional[str] = None
+
+    def _run(self, mint_a: str, mint_b: str) -> str:
+        try:
+            data = _cli.run(
+                "claim-fees",
+                "--pair", f"{mint_a}-{mint_b}",
+                keypair=self.keypair,
+                rpc_url=self.rpc_url,
+            )
+            if data.get("note") == "No fees to claim":
+                return f"No fees to claim for {mint_a}/{mint_b} position."
+            mode = "auto-compounded into LP shares" if data.get("auto_compound") else "transferred to wallet"
+            return (
+                f"Fees claimed from {mint_a}/{mint_b} pool\n"
+                f"  Fees A:    {data.get('fees_a')}\n"
+                f"  Fees B:    {data.get('fees_b')}\n"
+                f"  Mode:      {mode}\n"
+                f"  Signature: {data.get('tx')}"
+            )
+        except RuntimeError as exc:
+            return f"Claim fees failed: {exc}"
+
+
 class A2APoolInfoTool(BaseTool):
     """
     Fetch live pool state from A2A-Swap: reserves, spot price, LP supply, fee rate.
@@ -347,6 +469,8 @@ def get_tools(
         A2ASimulateTool(rpc_url=rpc_url),
         A2ASwapTool(**shared),
         A2AProvideLiquidityTool(**shared),
+        A2ARemoveLiquidityTool(**shared),
+        A2AClaimFeesTool(**shared),
         A2APoolInfoTool(rpc_url=rpc_url),
         A2AMyFeesTool(**shared),
     ]

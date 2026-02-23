@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "a2a-swap-langchain"
-version = "0.1.0"
+version = "0.1.1"
 description = "LangChain and CrewAI tools for A2A-Swap — autonomous token swaps and liquidity on Solana"
 readme = "README.md"
 license = { text = "MIT" }

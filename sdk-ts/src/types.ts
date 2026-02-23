@@ -196,6 +196,52 @@ export interface PositionInfo {
   compoundThreshold: bigint;
 }
 
+/** Parameters for {@link A2ASwapClient.removeLiquidity}. */
+export interface RemoveLiquidityParams {
+  /** First token mint of the pool. */
+  mintA: PublicKey;
+  /** Second token mint of the pool. */
+  mintB: PublicKey;
+  /** Number of LP shares to burn. */
+  lpShares: bigint;
+  /** Minimum token A to accept (slippage guard). `0n` = no guard. Default: `0n`. */
+  minA?: bigint;
+  /** Minimum token B to accept (slippage guard). `0n` = no guard. Default: `0n`. */
+  minB?: bigint;
+}
+
+/** Result of {@link A2ASwapClient.removeLiquidity}. */
+export interface RemoveLiquidityResult {
+  /** Confirmed transaction signature. */
+  signature: string;
+  /** Pool the shares were removed from. */
+  pool: PublicKey;
+  /** Agent's position account. */
+  position: PublicKey;
+  /** LP shares burned. */
+  lpShares: bigint;
+  /** Pre-flight estimate of token A returned. */
+  expectedA: bigint;
+  /** Pre-flight estimate of token B returned. */
+  expectedB: bigint;
+}
+
+/** Result of {@link A2ASwapClient.claimFees}. */
+export interface ClaimFeesResult {
+  /** Confirmed transaction signature. */
+  signature: string;
+  /** Pool the fees were claimed from. */
+  pool: PublicKey;
+  /** Agent's position account. */
+  position: PublicKey;
+  /** Fees claimed / compounded for token A. */
+  feesA: bigint;
+  /** Fees claimed / compounded for token B. */
+  feesB: bigint;
+  /** `true` = fees were auto-compounded into LP shares. */
+  autoCompound: boolean;
+}
+
 /** Aggregated fee summary from {@link A2ASwapClient.myFees}. */
 export interface FeeSummary {
   positions: PositionInfo[];

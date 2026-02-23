@@ -15,6 +15,7 @@ import { parsePool, parsePosition, parseTokenAmount } from './state';
 import { computeAmountB, pendingFeesForPosition, simulateDetailed } from './math';
 import {
   accountDisc,
+  claimFeesIx,
   deriveAta,
   derivePool,
   derivePoolAuthority,
@@ -22,9 +23,11 @@ import {
   deriveTreasury,
   initializePoolIx,
   provideLiquidityIx,
+  removeLiquidityIx,
   swapIx,
 } from './instructions';
 import type {
+  ClaimFeesResult,
   CreatePoolParams,
   CreatePoolResult,
   FeeSummary,
@@ -32,6 +35,8 @@ import type {
   PositionInfo,
   ProvideParams,
   ProvideResult,
+  RemoveLiquidityParams,
+  RemoveLiquidityResult,
   SimulateParams,
   SimulateResult,
   SwapParams,
@@ -296,6 +301,105 @@ export class A2ASwapClient {
       minAmountOut,
       aToB,
     };
+  }
+
+  /**
+   * Burn LP shares and withdraw proportional tokens from a pool.
+   *
+   * Fees are synced before withdrawal but not transferred — call
+   * {@link claimFees} to collect them separately.
+   *
+   * @param payer - Agent keypair owning the position.
+   */
+  async removeLiquidity(
+    payer:  Keypair | undefined,
+    params: RemoveLiquidityParams,
+  ): Promise<RemoveLiquidityResult> {
+    const signer = this.resolveSigner(payer);
+
+    const { poolAddr, poolState } = await this.findPool(params.mintA, params.mintB);
+    const poolAuthority = derivePoolAuthority(poolAddr, this.programId);
+    const position      = derivePosition(poolAddr, signer.publicKey, this.programId);
+
+    // Pre-flight: compute expected return amounts (mirrors on-chain math)
+    const reserveA = await this.fetchTokenAmount(poolState.tokenAVault);
+    const reserveB = await this.fetchTokenAmount(poolState.tokenBVault);
+    const expectedA = poolState.lpSupply > 0n
+      ? params.lpShares * reserveA / poolState.lpSupply
+      : 0n;
+    const expectedB = poolState.lpSupply > 0n
+      ? params.lpShares * reserveB / poolState.lpSupply
+      : 0n;
+
+    const agentTokenA = deriveAta(signer.publicKey, poolState.tokenAMint);
+    const agentTokenB = deriveAta(signer.publicKey, poolState.tokenBMint);
+
+    const ix = removeLiquidityIx(
+      this.programId,
+      signer.publicKey,
+      poolAddr,
+      poolAuthority,
+      position,
+      poolState.tokenAVault,
+      poolState.tokenBVault,
+      agentTokenA,
+      agentTokenB,
+      params.lpShares,
+      params.minA ?? 0n,
+      params.minB ?? 0n,
+    );
+    const sig = await this.signAndSend([ix], signer, []);
+
+    return { signature: sig, pool: poolAddr, position, lpShares: params.lpShares, expectedA, expectedB };
+  }
+
+  /**
+   * Claim accrued LP trading fees for one pool position.
+   *
+   * If the position has `autoCompound` enabled and total fees ≥ `compoundThreshold`,
+   * fees are reinvested as additional LP shares instead of being transferred out.
+   *
+   * @param payer - Agent keypair owning the position.
+   */
+  async claimFees(
+    payer:  Keypair | undefined,
+    mintA:  PublicKey,
+    mintB:  PublicKey,
+  ): Promise<ClaimFeesResult> {
+    const signer = this.resolveSigner(payer);
+
+    const { poolAddr, poolState } = await this.findPool(mintA, mintB);
+    const poolAuthority = derivePoolAuthority(poolAddr, this.programId);
+    const position      = derivePosition(poolAddr, signer.publicKey, this.programId);
+
+    // Read position state for pre-flight fee display
+    const posInfo = await this.connection.getAccountInfo(position);
+    if (!posInfo) throw new Error(`No position found for this keypair in pool ${poolAddr.toBase58()}`);
+    const { parsePosition } = await import('./state');
+    const pos = parsePosition(Buffer.from(posInfo.data));
+
+    const { pendingFeesForPosition } = await import('./math');
+    const { pendingA, pendingB } = pendingFeesForPosition(pos, poolState);
+    const feesA = pos.feesOwedA + pendingA;
+    const feesB = pos.feesOwedB + pendingB;
+
+    const agentTokenA = deriveAta(signer.publicKey, poolState.tokenAMint);
+    const agentTokenB = deriveAta(signer.publicKey, poolState.tokenBMint);
+
+    const ix = claimFeesIx(
+      this.programId,
+      signer.publicKey,
+      poolAddr,
+      poolAuthority,
+      position,
+      poolState.tokenAVault,
+      poolState.tokenBVault,
+      agentTokenA,
+      agentTokenB,
+    );
+    const sig = await this.signAndSend([ix], signer, []);
+
+    return { signature: sig, pool: poolAddr, position, feesA, feesB, autoCompound: pos.autoCompound };
   }
 
   // ── Read operations ───────────────────────────────────────────────────────

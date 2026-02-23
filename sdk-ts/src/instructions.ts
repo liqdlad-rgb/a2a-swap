@@ -178,6 +178,77 @@ export function provideLiquidityIx(
   return new TransactionInstruction({ programId, keys, data });
 }
 
+// ─── remove_liquidity ────────────────────────────────────────────────────────
+
+/** Build the `remove_liquidity` instruction. */
+export function removeLiquidityIx(
+  programId:   PublicKey,
+  agent:       PublicKey,
+  pool:        PublicKey,
+  poolAuthority: PublicKey,
+  position:    PublicKey,
+  vaultA:      PublicKey,
+  vaultB:      PublicKey,
+  agentTokenA: PublicKey,
+  agentTokenB: PublicKey,
+  lpShares:    bigint,
+  minA:        bigint,
+  minB:        bigint,
+): TransactionInstruction {
+  // 8 disc + 8 + 8 + 8 = 32 bytes
+  const data = Buffer.alloc(32);
+  instructionDisc('remove_liquidity').copy(data, 0);
+  data.writeBigUInt64LE(lpShares, 8);
+  data.writeBigUInt64LE(minA,     16);
+  data.writeBigUInt64LE(minB,     24);
+
+  const keys: AccountMeta[] = [
+    { pubkey: agent,            isSigner: true,  isWritable: true  },
+    { pubkey: pool,             isSigner: false, isWritable: true  },
+    { pubkey: poolAuthority,    isSigner: false, isWritable: false },
+    { pubkey: position,         isSigner: false, isWritable: true  },
+    { pubkey: vaultA,           isSigner: false, isWritable: true  },
+    { pubkey: vaultB,           isSigner: false, isWritable: true  },
+    { pubkey: agentTokenA,      isSigner: false, isWritable: true  },
+    { pubkey: agentTokenB,      isSigner: false, isWritable: true  },
+    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+  ];
+
+  return new TransactionInstruction({ programId, keys, data });
+}
+
+// ─── claim_fees ───────────────────────────────────────────────────────────────
+
+/** Build the `claim_fees` instruction. */
+export function claimFeesIx(
+  programId:   PublicKey,
+  agent:       PublicKey,
+  pool:        PublicKey,
+  poolAuthority: PublicKey,
+  position:    PublicKey,
+  vaultA:      PublicKey,
+  vaultB:      PublicKey,
+  agentTokenA: PublicKey,
+  agentTokenB: PublicKey,
+): TransactionInstruction {
+  // 8 disc only — no parameters
+  const data = instructionDisc('claim_fees');
+
+  const keys: AccountMeta[] = [
+    { pubkey: agent,            isSigner: true,  isWritable: true  },
+    { pubkey: pool,             isSigner: false, isWritable: true  },
+    { pubkey: poolAuthority,    isSigner: false, isWritable: false },
+    { pubkey: position,         isSigner: false, isWritable: true  },
+    { pubkey: vaultA,           isSigner: false, isWritable: true  },
+    { pubkey: vaultB,           isSigner: false, isWritable: true  },
+    { pubkey: agentTokenA,      isSigner: false, isWritable: true  },
+    { pubkey: agentTokenB,      isSigner: false, isWritable: true  },
+    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+  ];
+
+  return new TransactionInstruction({ programId, keys, data });
+}
+
 // ─── swap ─────────────────────────────────────────────────────────────────────
 
 /** Build the `swap` instruction. */
