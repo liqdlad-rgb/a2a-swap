@@ -12,12 +12,13 @@ dependencies = [
 
 [[package]]
 name = "a2a-swap-cli"
-version = "0.1.2"
+version = "0.1.3"
 dependencies = [
  "anyhow",
  "clap",
  "serde",
  "serde_json",
+ "solana-account-decoder-client-types",
  "solana-client",
  "solana-sdk",
  "tokio",

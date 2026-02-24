@@ -2,7 +2,8 @@ use clap::{CommandFactory, Parser, Subcommand};
 use anyhow::{anyhow, Context, Result};
 use serde_json::json;
 use solana_client::rpc_client::RpcClient;
-use solana_client::rpc_config::RpcProgramAccountsConfig;
+use solana_client::rpc_config::{RpcAccountInfoConfig, RpcProgramAccountsConfig};
+use solana_account_decoder_client_types::UiAccountEncoding;
 use solana_client::rpc_filter::{Memcmp, MemcmpEncodedBytes, RpcFilterType};
 use solana_sdk::{
     commitment_config::CommitmentConfig,
@@ -250,6 +251,10 @@ fn get_agent_positions(
             RpcFilterType::Memcmp(Memcmp::new(0, MemcmpEncodedBytes::Bytes(disc.to_vec()))),
             RpcFilterType::Memcmp(Memcmp::new(8, MemcmpEncodedBytes::Bytes(agent.to_bytes().to_vec()))),
         ]),
+        account_config: RpcAccountInfoConfig {
+            encoding: Some(UiAccountEncoding::Base64),
+            ..RpcAccountInfoConfig::default()
+        },
         ..RpcProgramAccountsConfig::default()
     };
     let raw = client
