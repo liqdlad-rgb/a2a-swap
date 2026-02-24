@@ -29,7 +29,7 @@ const TREASURY_SEED: &[u8]       = b"treasury";
 /// SPL Token program (well-known, never changes)
 const TOKEN_PROGRAM_ID: &str = "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA";
 /// Associated Token Account program
-const ATA_PROGRAM_ID: &str   = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bsn";
+const ATA_PROGRAM_ID: &str   = "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL";
 /// Rent sysvar (well-known, never changes)
 const RENT_SYSVAR_ID: &str   = "SysvarRent111111111111111111111111111111111";
 

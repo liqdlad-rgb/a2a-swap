@@ -23,7 +23,7 @@ import { createHash } from 'crypto';
 
 export { TOKEN_PROGRAM_ID };
 export const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
-  'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bZE',
+  'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL',
 );
 
 // ─── PDA seeds ────────────────────────────────────────────────────────────────

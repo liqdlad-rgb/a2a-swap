@@ -21,7 +21,7 @@ pub(crate) fn spl_token_id() -> Pubkey {
 }
 
 pub(crate) fn ata_program_id() -> Pubkey {
-    Pubkey::from_str("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJe1bZE").unwrap()
+    Pubkey::from_str("ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL").unwrap()
 }
 
 // ─── PDA seeds (mirrors programs/a2a-swap/src/constants.rs) ──────────────────
