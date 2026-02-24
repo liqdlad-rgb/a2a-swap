@@ -442,6 +442,50 @@ await sendAndConfirmTransaction(conn, tx, [agentKeypair, approverKeypair]);
 
 ## Integration examples
 
+### MCP Server (Claude / any MCP-compatible agent)
+
+The fastest way for Claude-based agents to discover and use A2A-Swap.
+Install from [Smithery](https://smithery.ai/server/@liqdlad/mcp-a2a-swap) or run locally:
+
+```bash
+npm install -g @liqdlad/mcp-a2a-swap
+```
+
+Add to your `claude_desktop_config.json` (or any MCP host config):
+
+```json
+{
+  "mcpServers": {
+    "a2a-swap": {
+      "command": "mcp-a2a-swap",
+      "env": {
+        "SOLANA_PRIVATE_KEY": "[1,2,3,...]",
+        "SOLANA_RPC_URL": "https://api.mainnet-beta.solana.com"
+      }
+    }
+  }
+}
+```
+
+Exposes 9 tools directly to the agent:
+
+| Tool | Description | Wallet needed |
+|------|-------------|:---:|
+| `simulate_swap` | Preview swap with full fee breakdown | No |
+| `pool_info` | Pool reserves, price, fee rate | No |
+| `execute_swap` | Atomic swap with slippage guard | Yes |
+| `provide_liquidity` | Deposit tokens, receive LP shares | Yes |
+| `remove_liquidity` | Burn LP shares, withdraw tokens | Yes |
+| `claim_fees` | Collect or auto-compound LP fees | Yes |
+| `my_positions` | List all LP positions | Yes |
+| `my_fees` | Fee summary across positions | Yes |
+| `create_pool` | Create a new pool | Yes |
+
+Token symbols `SOL`, `USDC`, `USDT` are resolved automatically.
+Any other token accepts a raw base-58 mint address.
+
+---
+
 ### ElizaOS (TypeScript)
 
 ```bash
@@ -560,6 +604,7 @@ async fn main() -> anyhow::Result<()> {
 - [x] Approval mode (co-signature, no on-chain state)
 - [x] CLI — `simulate`, `convert`, `create-pool`, `provide`, `my-positions`, `pool-info`, `my-fees`, `remove-liquidity`, `claim-fees`
 - [x] TypeScript SDK (`@liqdlad/a2a-swap-sdk`) published to npm
+- [x] MCP server (`@liqdlad/mcp-a2a-swap`) published to npm + Smithery
 - [x] ElizaOS plugin (`plugin-a2a-swap`) published to elizaos registry
 - [x] Rust SDK (`a2a-swap-sdk`) published to crates.io
 - [x] CLI (`a2a-swap-cli`) published to crates.io

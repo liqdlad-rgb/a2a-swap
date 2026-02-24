@@ -1,0 +1,59 @@
+{
+  "name": "@liqdlad/mcp-a2a-swap",
+  "version": "0.1.0",
+  "description": "MCP server for A2A-Swap — exposes swap, liquidity, and pool tools for AI agents on Solana",
+  "author": "A2A-Swap Contributors",
+  "license": "MIT",
+  "homepage": "https://github.com/liqdlad-rgb/a2a-swap#readme",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/liqdlad-rgb/a2a-swap.git",
+    "directory": "mcp-a2a-swap"
+  },
+  "bugs": {
+    "url": "https://github.com/liqdlad-rgb/a2a-swap/issues"
+  },
+  "bin": {
+    "mcp-a2a-swap": "dist/index.js"
+  },
+  "main": "dist/index.js",
+  "files": [
+    "dist",
+    "smithery.yaml",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "solana",
+    "amm",
+    "defi",
+    "swap",
+    "liquidity",
+    "agent",
+    "autonomous",
+    "ai",
+    "elizaos"
+  ],
+  "dependencies": {
+    "@liqdlad/a2a-swap-sdk": "^0.1.2",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@solana/web3.js": "^1.95.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.3.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,35 @@
+name: mcp-a2a-swap
+description: >
+  Swap tokens, provide and remove liquidity, claim fees, and inspect pools on
+  Solana via the A2A-Swap constant-product AMM — built for autonomous AI agents.
+  Exposes 9 tools: simulate_swap, pool_info, execute_swap, provide_liquidity,
+  remove_liquidity, claim_fees, my_positions, my_fees, create_pool.
+
+startCommand:
+  type: stdio
+  configSchema:
+    type: object
+    properties:
+      SOLANA_PRIVATE_KEY:
+        type: string
+        description: >
+          Agent wallet secret key as a JSON byte array, e.g. [1,2,3,...].
+          Required for all write operations (execute_swap, provide_liquidity,
+          remove_liquidity, claim_fees, create_pool) and identity-based reads
+          (my_positions, my_fees). Read-only tools (simulate_swap, pool_info)
+          work without it.
+      SOLANA_RPC_URL:
+        type: string
+        description: >
+          Solana RPC endpoint URL. Defaults to https://api.mainnet-beta.solana.com
+          if not set.
+    required: []
+  commandFunction: |-
+    (config) => ({
+      command: "node",
+      args: ["dist/index.js"],
+      env: {
+        ...(config.SOLANA_PRIVATE_KEY ? { SOLANA_PRIVATE_KEY: config.SOLANA_PRIVATE_KEY } : {}),
+        ...(config.SOLANA_RPC_URL    ? { SOLANA_RPC_URL:    config.SOLANA_RPC_URL    } : {}),
+      }
+    })
