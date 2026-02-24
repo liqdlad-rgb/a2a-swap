@@ -62,16 +62,25 @@ function fmt(v: bigint | number | string): string {
   return v.toString();
 }
 
-// ─── MCP Server ───────────────────────────────────────────────────────────────
+// ─── Server factory ───────────────────────────────────────────────────────────
+//
+// createSandboxServer() is exported for Smithery's tool-scanner so it can
+// introspect tools/list without real credentials. The scanner never calls
+// write tools so no credentials are needed.
 
-const server = new Server(
-  { name: 'mcp-a2a-swap', version: '0.1.0' },
-  { capabilities: { tools: {} } },
-);
+export function createSandboxServer(): Server {
+  return createServer();
+}
 
-// ─── Tool list ────────────────────────────────────────────────────────────────
+function createServer(): Server {
+  const server = new Server(
+    { name: 'mcp-a2a-swap', version: '0.1.0' },
+    { capabilities: { tools: {} } },
+  );
 
-server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  // ─── Tool list ──────────────────────────────────────────────────────────────
+
+  server.setRequestHandler(ListToolsRequestSchema, async () => ({
   tools: [
     {
       name: 'simulate_swap',
@@ -473,11 +482,14 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
+  return server;
+} // end createServer
+
 // ─── Start server ─────────────────────────────────────────────────────────────
 
 async function main(): Promise<void> {
   const transport = new StdioServerTransport();
-  await server.connect(transport);
+  await createServer().connect(transport);
   // Server runs until process exits — no console output here (stdio is used for MCP)
 }
 

@@ -10,5 +10,6 @@
  *   SOLANA_PRIVATE_KEY  — wallet secret key as JSON byte array [n,n,...] (required for write ops)
  *   SOLANA_RPC_URL      — Solana RPC endpoint (default: mainnet-beta)
  */
-export {};
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+export declare function createSandboxServer(): Server;
 //# sourceMappingURL=index.d.ts.map
