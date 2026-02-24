@@ -282,22 +282,50 @@ Lists all LP positions and their accrued fees. No transaction sent — safe to p
   Total fees B             1,870
 ```
 
-### Remove liquidity and claim fees (SDK)
+### `remove-liquidity` — Withdraw from a pool
 
-`remove_liquidity` and `claim_fees` are available as on-chain instructions and are
-fully supported by both SDKs. CLI wrappers (`remove` and `claim-fees`) are planned
-for v1.1.
-
-**TypeScript:**
-
-```typescript
-await client.removeLiquidity(keypair, { mintA, mintB, lpShares: 500_000_000n, minA: 0n, minB: 0n });
-await client.claimFees(keypair, { mintA, mintB });
+```
+a2a-swap remove-liquidity --pair <A-B> --lp-shares <AMOUNT> [--min-a <AMOUNT>] [--min-b <AMOUNT>]
 ```
 
-**Rust:**
+Burns LP shares and returns proportional tokens. Accrued fees are synced but not
+transferred — run `claim-fees` after to collect them.
+
+```bash
+# Remove half your position (no slippage guards)
+a2a-swap remove-liquidity --pair SOL-USDC --lp-shares 500000000
+
+# With slippage guards (min tokens expected back)
+a2a-swap remove-liquidity --pair SOL-USDC --lp-shares 500000000 \
+  --min-a 490000000 --min-b 73000000
+```
+
+---
+
+### `claim-fees` — Collect accrued trading fees
+
+```
+a2a-swap claim-fees --pair <A-B>
+```
+
+Transfers accrued LP trading fees from the pool vault to your wallet. If
+`--auto-compound` was set on the position, fees are reinvested as additional
+LP shares instead of transferred.
+
+```bash
+a2a-swap claim-fees --pair SOL-USDC
+```
+
+**SDK equivalents:**
+
+```typescript
+// TypeScript
+await client.removeLiquidity(keypair, { mintA, mintB, lpShares: 500_000_000n, minA: 0n, minB: 0n });
+await client.claimFees(keypair, mintA, mintB);
+```
 
 ```rust
+// Rust
 client.remove_liquidity(&payer, RemoveParams { mint_a, mint_b, lp_shares: 500_000_000, min_a: 0, min_b: 0 }).await?;
 client.claim_fees(&payer, ClaimParams { mint_a, mint_b }).await?;
 ```
@@ -331,7 +359,7 @@ Bots can earn passive income by acting as liquidity providers:
 1. create-pool  (one time per token pair)
 2. provide --auto-compound
 3. …swaps happen, fees accumulate in pool vaults…
-4. fees auto-compound into LP shares (or claim manually via SDK)
+4. fees auto-compound into LP shares (or claim manually via `claim-fees` CLI / SDK)
 ```
 
 ### Fee accounting
@@ -347,7 +375,7 @@ claimable_fees_B = lp_shares × (fee_growth_global_B − checkpoint_B) >> 64
 Fees **stay in the vault** (they increase k), so no tokens are moved until you claim. This means:
 
 - LPs benefit from slightly improved swap rates over time (growing reserves).
-- `claim_fees` (via SDK) transfers tokens out of the vault to your wallet.
+- `claim-fees` CLI (or `claim_fees` SDK) transfers tokens out of the vault to your wallet.
 - `--auto-compound` converts fees_owed to additional LP shares — no vault transfer needed.
 
 ### Auto-compound flow
@@ -431,13 +459,15 @@ const runtime = new AgentRuntime({
 });
 ```
 
-Registers five actions automatically:
+Registers seven actions automatically:
 
 | Action | Trigger phrases |
 |--------|-----------------|
 | `A2A_SIMULATE_SWAP` | "simulate swap", "estimate swap", "quote swap" |
 | `A2A_SWAP` | "swap tokens", "trade tokens", "exchange tokens" |
 | `A2A_PROVIDE_LIQUIDITY` | "provide liquidity", "add liquidity", "add to pool" |
+| `A2A_REMOVE_LIQUIDITY` | "remove liquidity", "withdraw liquidity", "exit pool" |
+| `A2A_CLAIM_FEES` | "claim fees", "collect fees", "harvest fees" |
 | `A2A_POOL_INFO` | "pool info", "pool stats", "check pool" |
 | `A2A_MY_FEES` | "my fees", "check fees", "claimable fees" |
 
@@ -528,7 +558,7 @@ async fn main() -> anyhow::Result<()> {
 - [x] Constant-product AMM (x·y=k), deployed on mainnet-beta
 - [x] LP fee auto-compound
 - [x] Approval mode (co-signature, no on-chain state)
-- [x] CLI — `simulate`, `convert`, `create-pool`, `provide`, `my-positions`, `pool-info`, `my-fees`
+- [x] CLI — `simulate`, `convert`, `create-pool`, `provide`, `my-positions`, `pool-info`, `my-fees`, `remove-liquidity`, `claim-fees`
 - [x] TypeScript SDK (`@liqdlad/a2a-swap-sdk`) published to npm
 - [x] ElizaOS plugin (`plugin-a2a-swap`) published to elizaos registry
 - [x] Rust SDK (`a2a-swap-sdk`) published to crates.io
@@ -537,7 +567,6 @@ async fn main() -> anyhow::Result<()> {
 - [x] SOL/USDC pool live on mainnet
 
 ### v1.0 (planned)
-- [ ] **CLI `remove` and `claim-fees` commands** — wrappers for the existing on-chain instructions
 - [ ] **Time-weighted average price (TWAP)** oracle — 30-slot ring buffer, readable by any agent
 - [ ] **Permissioned pools** — optional LP whitelist (enterprise / DAO use)
 - [ ] **Multi-hop routing** — chain two pools in one transaction for pairs without a direct pool
