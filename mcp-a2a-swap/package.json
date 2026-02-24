@@ -7,7 +7,7 @@
   "homepage": "https://github.com/liqdlad-rgb/a2a-swap#readme",
   "repository": {
     "type": "git",
-    "url": "https://github.com/liqdlad-rgb/a2a-swap.git",
+    "url": "git+https://github.com/liqdlad-rgb/a2a-swap.git",
     "directory": "mcp-a2a-swap"
   },
   "bugs": {
