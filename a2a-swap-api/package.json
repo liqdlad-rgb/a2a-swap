@@ -1,0 +1,13 @@
+{
+  "name": "a2a-swap-api",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev":    "wrangler dev",
+    "deploy": "wrangler deploy",
+    "build":  "cargo install -q worker-build && worker-build --release"
+  },
+  "devDependencies": {
+    "wrangler": "^4.0.0"
+  }
+}

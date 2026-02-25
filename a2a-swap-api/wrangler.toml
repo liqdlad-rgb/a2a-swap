@@ -1,0 +1,16 @@
+name               = "a2a-swap-api"
+main               = "build/worker/shim.mjs"
+compatibility_date = "2026-02-24"
+
+[build]
+command = "cargo install -q worker-build && worker-build --release"
+
+# ── Environment variables ─────────────────────────────────────────────────────
+# After deploying, replace <your-account> with your Cloudflare account subdomain
+# (shown in the wrangler deploy output), then run `wrangler deploy` once more.
+[vars]
+API_URL = "https://a2a-swap-api.a2a-swap.workers.dev"
+
+# SOLANA_RPC_URL is omitted here — the worker falls back to the public mainnet
+# RPC automatically.  For production traffic, set a private endpoint instead:
+#   wrangler secret put SOLANA_RPC_URL
