@@ -17,3 +17,5 @@
 ## Reference
 
 * [Program Reference](program-reference.md)
+* [FAQ](faq.md)
+* [Changelog](changelog.md)
