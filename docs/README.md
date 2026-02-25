@@ -62,11 +62,11 @@ A JSON manifest embedded in the program binary. Any agent can read the protocol'
 | Method | Best for | Requires |
 |--------|----------|----------|
 | [**HTTP API**](http-api.md) | Any language, quick prototypes, shell scripts | Nothing — just `curl` |
+| [**CLI**](cli.md) | Shell automation, devops, one-off commands | `cargo install` |
+| [**MCP Server**](mcp.md) | Claude and any MCP-compatible agent host | `npx` |
 | [**TypeScript SDK**](typescript-sdk.md) | ElizaOS, Node.js agents, browser dapps | `npm install` |
 | [**Rust SDK**](rust-sdk.md) | High-performance agents, on-chain CPI callers | `cargo add` |
 | [**LangChain / CrewAI**](langchain.md) | Python AI pipelines | `pip install` + CLI |
-| [**CLI**](quickstart.md) | Shell automation, devops, one-off commands | `cargo install` |
-| [**MCP Server**](quickstart.md#mcp-server) | Claude and any MCP-compatible agent host | `npx` |
 
 ---
 

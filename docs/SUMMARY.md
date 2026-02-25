@@ -8,6 +8,8 @@
 ## Integrations
 
 * [HTTP API](http-api.md)
+* [CLI](cli.md)
+* [MCP Server](mcp.md)
 * [TypeScript SDK](typescript-sdk.md)
 * [Rust SDK](rust-sdk.md)
 * [LangChain / CrewAI](langchain.md)
