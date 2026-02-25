@@ -282,21 +282,43 @@ Lists all LP positions and their accrued fees. No transaction sent — safe to p
   Total fees B             1,870
 ```
 
-### `remove-liquidity` — Withdraw from a pool
+### `remove` — Withdraw from a pool (by percentage or exact shares)
 
 ```
-a2a-swap remove-liquidity --pair <A-B> --lp-shares <AMOUNT> [--min-a <AMOUNT>] [--min-b <AMOUNT>]
+a2a-swap remove --pair <A-B> --percentage <0-100>
+a2a-swap remove --pair <A-B> --amount <LP_SHARES>
 ```
 
-Burns LP shares and returns proportional tokens. Accrued fees are synced but not
-transferred — run `claim-fees` after to collect them.
+Burns LP shares and returns proportional tokens. Use `--percentage 100` to exit entirely,
+or any value to remove a fraction. Accrued fees are synced but not transferred — run
+`claim-fees` after to collect them.
 
 ```bash
-# Remove half your position (no slippage guards)
-a2a-swap remove-liquidity --pair SOL-USDC --lp-shares 500000000
+# Exit your entire position
+a2a-swap remove --pair SOL-USDC --percentage 100
 
-# With slippage guards (min tokens expected back)
-a2a-swap remove-liquidity --pair SOL-USDC --lp-shares 500000000 \
+# Remove half your position
+a2a-swap remove --pair SOL-USDC --percentage 50
+
+# Exact LP share count
+a2a-swap remove --pair SOL-USDC --amount 500000000
+
+# With slippage guards (reject if you'd receive less than these amounts)
+a2a-swap remove --pair SOL-USDC --percentage 100 \
+  --min-a 490000000 --min-b 73000000
+```
+
+### `remove-liquidity` — Withdraw from a pool (legacy, exact shares)
+
+```
+a2a-swap remove-liquidity --pair <A-B> --shares <AMOUNT> [--min-a <AMOUNT>] [--min-b <AMOUNT>]
+```
+
+Original command — still fully supported. Prefer `remove --percentage` for convenience.
+
+```bash
+a2a-swap remove-liquidity --pair SOL-USDC --shares 500000000
+a2a-swap remove-liquidity --pair SOL-USDC --shares 500000000 \
   --min-a 490000000 --min-b 73000000
 ```
 
@@ -306,14 +328,22 @@ a2a-swap remove-liquidity --pair SOL-USDC --lp-shares 500000000 \
 
 ```
 a2a-swap claim-fees --pair <A-B>
+a2a-swap claim-fees --all
 ```
 
 Transfers accrued LP trading fees from the pool vault to your wallet. If
 `--auto-compound` was set on the position, fees are reinvested as additional
-LP shares instead of transferred.
+LP shares instead of transferred. Use `--all` to claim every position in one pass.
 
 ```bash
+# Claim fees for one pool
 a2a-swap claim-fees --pair SOL-USDC
+
+# Claim all positions owned by this keypair
+a2a-swap claim-fees --all
+
+# Machine-readable output (for agent pipelines)
+a2a-swap claim-fees --all --json
 ```
 
 **SDK equivalents:**

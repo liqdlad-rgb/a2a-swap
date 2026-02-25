@@ -475,11 +475,13 @@ ENVIRONMENT:
   A2A_KEYPAIR    Path to Ed25519 keypair JSON  [default: ~/.config/solana/id.json]
 
 QUICK START:
-  a2a-swap simulate        --in SOL --out USDC --amount 1000000000
-  a2a-swap convert         --in SOL --out USDC --amount 1000000000
-  a2a-swap remove-liquidity --pair SOL-USDC --shares 1000000
-  a2a-swap claim-fees      --pair SOL-USDC
+  a2a-swap simulate         --in SOL --out USDC --amount 1000000000
+  a2a-swap convert          --in SOL --out USDC --amount 1000000000
+  a2a-swap remove           --pair SOL-USDC --percentage 100
+  a2a-swap claim-fees       --pair SOL-USDC
+  a2a-swap claim-fees       --all
   a2a-swap my-fees
+  a2a-swap remove-liquidity --pair SOL-USDC --shares 1000000  (legacy)
 
 PROGRAM:
   8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq  (Solana mainnet-beta)"
@@ -796,12 +798,15 @@ NOTES:
     /// If the position has auto_compound enabled AND total fees ≥ compound_threshold,
     /// fees are reinvested as additional LP shares (no tokens transferred out).
     /// Otherwise fees are transferred directly to the agent's token accounts.
+    /// Use --all to claim every position owned by the keypair in one pass.
     #[command(
         name = "claim-fees",
         after_help = "\
 EXAMPLES:
   a2a-swap claim-fees --pair SOL-USDC
   a2a-swap claim-fees --pair SOL-USDC --json
+  a2a-swap claim-fees --all
+  a2a-swap claim-fees --all --json
 
   # Check claimable amounts first (no tx sent):
   a2a-swap my-fees --json
@@ -809,12 +814,69 @@ EXAMPLES:
 NOTES:
   Uses `my-fees` math: fees_owed + pending since last on-chain sync.
   Auto-compound converts fees to LP shares instead of transferring out.
-  To claim all positions in one pass, call this command once per pool."
+  --all iterates every position owned by this keypair and claims each."
     )]
     ClaimFees {
-        /// Token pair of the pool to claim fees from, e.g. SOL-USDC
+        /// Token pair of the pool to claim fees from, e.g. SOL-USDC.
+        /// Omit when using --all.
+        #[arg(long, value_name = "A-B", conflicts_with = "all")]
+        pair: Option<String>,
+
+        /// Claim fees for every LP position owned by this keypair
+        #[arg(long, conflicts_with = "pair", default_value_t = false)]
+        all: bool,
+    },
+
+    /// Burn LP shares and withdraw proportional tokens (ergonomic alias for remove-liquidity)
+    ///
+    /// Accepts --percentage to exit a fraction of your position, or --amount for an
+    /// exact LP share count. Fees are synced before withdrawal but NOT transferred —
+    /// run `claim-fees` after to collect them.
+    #[command(
+        name = "remove",
+        after_help = "\
+EXAMPLES:
+  # Exit your entire position
+  a2a-swap remove --pair SOL-USDC --percentage 100
+
+  # Remove half your position
+  a2a-swap remove --pair SOL-USDC --percentage 50
+
+  # Exact LP share count
+  a2a-swap remove --pair SOL-USDC --amount 1000000
+
+  # With slippage guards
+  a2a-swap remove --pair SOL-USDC --percentage 100 --min-a 450000000 --min-b 80000000
+
+  # Machine-readable output
+  a2a-swap remove --pair SOL-USDC --percentage 100 --json
+
+NOTES:
+  Run `a2a-swap my-positions` to see your LP share balance.
+  Run `a2a-swap claim-fees --pair <PAIR>` after to collect accrued fees.
+  Amounts are in atomic units (lamports for SOL, μUSDC for USDC, etc.)."
+    )]
+    Remove {
+        /// Token pair of the pool, e.g. SOL-USDC or <mintA>-<mintB>
         #[arg(long, value_name = "A-B")]
         pair: String,
+
+        /// Percentage of your LP shares to remove (0 < pct ≤ 100).
+        /// Use 100 to exit the position entirely.
+        #[arg(long, value_name = "PCT", conflicts_with = "amount")]
+        percentage: Option<f64>,
+
+        /// Exact number of LP shares to burn (run `my-positions` for your balance).
+        #[arg(long, value_name = "SHARES", conflicts_with = "percentage")]
+        amount: Option<u64>,
+
+        /// Minimum token A to accept — reject tx if below (slippage guard, atomic units)
+        #[arg(long, value_name = "AMOUNT", default_value_t = 0)]
+        min_a: u64,
+
+        /// Minimum token B to accept — reject tx if below (slippage guard, atomic units)
+        #[arg(long, value_name = "AMOUNT", default_value_t = 0)]
+        min_b: u64,
     },
 }
 
@@ -873,8 +935,24 @@ fn main() -> Result<()> {
                 cli.json,
             )?;
         }
-        Commands::ClaimFees { pair } => {
-            cmd_claim_fees(&cli.rpc_url, &cli.keypair, pair, cli.json)?;
+        Commands::ClaimFees { pair, all } => {
+            if *all {
+                cmd_claim_fees_all(&cli.rpc_url, &cli.keypair, cli.json)?;
+            } else {
+                let p = pair.as_deref().ok_or_else(|| anyhow!(
+                    "Provide --pair <A-B> or --all.\n  \
+                     Example: a2a-swap claim-fees --pair SOL-USDC\n  \
+                     Example: a2a-swap claim-fees --all"
+                ))?;
+                cmd_claim_fees(&cli.rpc_url, &cli.keypair, p, cli.json)?;
+            }
+        }
+        Commands::Remove { pair, percentage, amount, min_a, min_b } => {
+            cmd_remove(
+                &cli.rpc_url, &cli.keypair,
+                pair, *percentage, *amount, *min_a, *min_b,
+                cli.json,
+            )?;
         }
     }
 
@@ -1771,6 +1849,290 @@ fn cmd_claim_fees(
         println!("  Fees B           {:>20}  (token B, atomic units)", fees_b);
         println!("  Mode             {mode}");
         println!("  Transaction      {sig}");
+    }
+    Ok(())
+}
+
+// ─── remove (ergonomic alias: --percentage or --amount) ──────────────────────
+
+fn cmd_remove(
+    rpc_url: &str,
+    keypair_path: &str,
+    pair: &str,
+    percentage: Option<f64>,
+    amount: Option<u64>,
+    min_a: u64,
+    min_b: u64,
+    json_output: bool,
+) -> Result<()> {
+    let payer      = load_keypair(keypair_path)?;
+    let program_id = Pubkey::from_str(PROGRAM_ID)?;
+    let client     = rpc(rpc_url);
+
+    let (pool_pda, pool_auth, pool, mint_a, mint_b) =
+        find_pool_by_pair(&client, pair, &program_id)?;
+
+    let (position_pda, _) = Pubkey::find_program_address(
+        &[POSITION_SEED, pool_pda.as_ref(), payer.pubkey().as_ref()],
+        &program_id,
+    );
+
+    let pos_acct = client.get_account(&position_pda)
+        .with_context(|| format!(
+            "No position found for this keypair in pool '{pair}'.\n  \
+             Run `a2a-swap my-positions` to see your LP positions."
+        ))?;
+    let pos = parse_position(&pos_acct.data)?;
+
+    // Resolve LP shares from --percentage or --amount
+    let lp_shares: u64 = if let Some(pct) = percentage {
+        if pct <= 0.0 || pct > 100.0 {
+            return Err(anyhow!(
+                "--percentage must be between 0 (exclusive) and 100 (inclusive). Got: {pct}"
+            ));
+        }
+        let shares = (pos.lp_shares as f64 * pct / 100.0).round() as u64;
+        if shares == 0 {
+            return Err(anyhow!(
+                "Computed 0 shares from {pct}% of {} LP shares — nothing to remove.",
+                pos.lp_shares
+            ));
+        }
+        shares
+    } else if let Some(amt) = amount {
+        amt
+    } else {
+        return Err(anyhow!(
+            "Provide either --percentage <0-100> or --amount <LP_SHARES>.\n  \
+             Example: a2a-swap remove --pair {pair} --percentage 100\n  \
+             Example: a2a-swap remove --pair {pair} --amount 1000000"
+        ));
+    };
+
+    if pos.lp_shares < lp_shares {
+        return Err(anyhow!(
+            "Requested {} LP shares but position only holds {}.\n  \
+             Run `a2a-swap my-positions` to see your current balance.",
+            lp_shares, pos.lp_shares
+        ));
+    }
+
+    let pct_of_position = if pos.lp_shares > 0 {
+        lp_shares as f64 / pos.lp_shares as f64 * 100.0
+    } else { 0.0 };
+
+    // Pre-compute expected amounts (mirrors on-chain math)
+    let reserve_a = parse_token_amount(&client.get_account(&pool.token_a_vault)?.data)?;
+    let reserve_b = parse_token_amount(&client.get_account(&pool.token_b_vault)?.data)?;
+    let expected_a = if pool.lp_supply > 0 {
+        (lp_shares as u128 * reserve_a as u128 / pool.lp_supply as u128) as u64
+    } else { 0 };
+    let expected_b = if pool.lp_supply > 0 {
+        (lp_shares as u128 * reserve_b as u128 / pool.lp_supply as u128) as u64
+    } else { 0 };
+
+    let ata_a = derive_ata(&payer.pubkey(), &mint_a);
+    let ata_b = derive_ata(&payer.pubkey(), &mint_b);
+
+    let mut ix_data = anchor_disc("global", "remove_liquidity").to_vec();
+    ix_data.extend_from_slice(&lp_shares.to_le_bytes());
+    ix_data.extend_from_slice(&min_a.to_le_bytes());
+    ix_data.extend_from_slice(&min_b.to_le_bytes());
+
+    let ix = Instruction {
+        program_id,
+        data: ix_data,
+        accounts: vec![
+            AccountMeta::new(payer.pubkey(),          true),
+            AccountMeta::new(pool_pda,                false),
+            AccountMeta::new_readonly(pool_auth,      false),
+            AccountMeta::new(position_pda,            false),
+            AccountMeta::new(pool.token_a_vault,      false),
+            AccountMeta::new(pool.token_b_vault,      false),
+            AccountMeta::new(ata_a,                   false),
+            AccountMeta::new(ata_b,                   false),
+            AccountMeta::new_readonly(Pubkey::from_str(TOKEN_PROGRAM_ID)?, false),
+        ],
+    };
+
+    let sig = sign_and_send(&client, &[ix], &payer, &[&payer])
+        .context("remove_liquidity transaction failed")?;
+
+    if json_output {
+        println!("{}", json!({
+            "status":          "ok",
+            "command":         "remove",
+            "pair":            pair,
+            "pool":            pool_pda.to_string(),
+            "position":        position_pda.to_string(),
+            "lp_shares":       lp_shares,
+            "pct_of_position": pct_of_position,
+            "expected_a":      expected_a,
+            "expected_b":      expected_b,
+            "min_a":           min_a,
+            "min_b":           min_b,
+            "tx":              sig.to_string(),
+        }));
+    } else {
+        println!("─── Liquidity Removed ────────────────────────────────────────────");
+        println!("  Pair             {pair}");
+        println!("  Pool             {pool_pda}");
+        println!("  Position         {position_pda}");
+        println!("  LP shares burnt  {:>20}  ({:.2}% of position)", lp_shares, pct_of_position);
+        println!("  Expected A       {:>20}  (token A, atomic units)", expected_a);
+        println!("  Expected B       {:>20}  (token B, atomic units)", expected_b);
+        if min_a > 0 || min_b > 0 {
+            println!("  Min A guard      {:>20}", min_a);
+            println!("  Min B guard      {:>20}", min_b);
+        }
+        println!("  Transaction      {sig}");
+        println!();
+        println!("  Run `a2a-swap claim-fees --pair {pair}` to collect any accrued fees.");
+    }
+    Ok(())
+}
+
+// ─── claim-fees --all ─────────────────────────────────────────────────────────
+
+fn cmd_claim_fees_all(
+    rpc_url: &str,
+    keypair_path: &str,
+    json_output: bool,
+) -> Result<()> {
+    let payer      = load_keypair(keypair_path)?;
+    let program_id = Pubkey::from_str(PROGRAM_ID)?;
+    let client     = rpc(rpc_url);
+
+    let positions = get_agent_positions(&client, &payer.pubkey(), &program_id)?;
+
+    if positions.is_empty() {
+        if json_output {
+            println!("{}", json!({
+                "status":  "ok",
+                "command": "claim-fees",
+                "agent":   payer.pubkey().to_string(),
+                "claimed": [],
+                "total_fees_a": 0,
+                "total_fees_b": 0,
+                "note":    "No LP positions found",
+            }));
+        } else {
+            println!("─── Claim Fees (all positions) ───────────────────────────────────");
+            println!("  Agent   {}", payer.pubkey());
+            println!();
+            println!("  No LP positions found.");
+            println!("  Run `a2a-swap provide --pair <PAIR> --amount <AMT>` to earn LP fees.");
+        }
+        return Ok(());
+    }
+
+    let pool_keys = dedup_pool_keys(&positions);
+    let pool_map  = fetch_pool_map(&client, &pool_keys);
+
+    if !json_output {
+        println!("─── Claim Fees (all positions) ───────────────────────────────────");
+        println!("  Agent   {}", payer.pubkey());
+        println!();
+    }
+
+    let mut results: Vec<serde_json::Value> = Vec::new();
+    let mut total_a: u64 = 0;
+    let mut total_b: u64 = 0;
+    let mut skipped: usize = 0;
+
+    for (position_pda, pos) in &positions {
+        let pool_state = match pool_map.get(&pos.pool) {
+            Some(ps) => ps,
+            None => {
+                eprintln!("Warning: pool {} not found, skipping position {position_pda}", pos.pool);
+                skipped += 1;
+                continue;
+            }
+        };
+
+        let (fees_a, fees_b) = pending_fees(pos, pool_state);
+        if fees_a == 0 && fees_b == 0 {
+            skipped += 1;
+            continue;
+        }
+
+        let label = pool_label(&pos.pool, &pool_map);
+
+        let (pool_auth, _) = Pubkey::find_program_address(
+            &[POOL_AUTHORITY_SEED, pos.pool.as_ref()],
+            &program_id,
+        );
+        let ata_a = derive_ata(&payer.pubkey(), &pool_state.token_a_mint);
+        let ata_b = derive_ata(&payer.pubkey(), &pool_state.token_b_mint);
+
+        let ix_data = anchor_disc("global", "claim_fees").to_vec();
+        let ix = Instruction {
+            program_id,
+            data: ix_data,
+            accounts: vec![
+                AccountMeta::new(payer.pubkey(),              true),
+                AccountMeta::new(pos.pool,                    false),
+                AccountMeta::new_readonly(pool_auth,          false),
+                AccountMeta::new(*position_pda,               false),
+                AccountMeta::new(pool_state.token_a_vault,    false),
+                AccountMeta::new(pool_state.token_b_vault,    false),
+                AccountMeta::new(ata_a,                       false),
+                AccountMeta::new(ata_b,                       false),
+                AccountMeta::new_readonly(Pubkey::from_str(TOKEN_PROGRAM_ID)?, false),
+            ],
+        };
+
+        match sign_and_send(&client, &[ix], &payer, &[&payer]) {
+            Ok(sig) => {
+                total_a = total_a.saturating_add(fees_a);
+                total_b = total_b.saturating_add(fees_b);
+                if !json_output {
+                    println!("  [{label}]");
+                    println!("    Position   {position_pda}");
+                    println!("    Fees A     {:>20}  (token A, atomic units)", fees_a);
+                    println!("    Fees B     {:>20}  (token B, atomic units)", fees_b);
+                    println!("    Mode       {}", if pos.auto_compound { "auto-compounded → LP shares" } else { "transferred to wallet" });
+                    println!("    Tx         {sig}");
+                    println!();
+                }
+                results.push(json!({
+                    "position":      position_pda.to_string(),
+                    "pool":          pos.pool.to_string(),
+                    "pair":          label,
+                    "fees_a":        fees_a,
+                    "fees_b":        fees_b,
+                    "auto_compound": pos.auto_compound,
+                    "tx":            sig.to_string(),
+                }));
+            }
+            Err(e) => {
+                eprintln!("Warning: claim failed for position {position_pda}: {e}");
+                skipped += 1;
+            }
+        }
+    }
+
+    if json_output {
+        println!("{}", json!({
+            "status":       "ok",
+            "command":      "claim-fees",
+            "agent":        payer.pubkey().to_string(),
+            "claimed":      results,
+            "skipped":      skipped,
+            "total_fees_a": total_a,
+            "total_fees_b": total_b,
+        }));
+    } else {
+        if results.is_empty() {
+            println!("  No fees to claim across {} position(s).", positions.len());
+        } else {
+            println!("  ─── Totals ───────────────────────────────────────");
+            println!("  Total fees A     {:>20}  ({} position(s) claimed)", total_a, results.len());
+            println!("  Total fees B     {:>20}  ({} position(s) claimed)", total_b, results.len());
+            if skipped > 0 {
+                println!("  Skipped          {skipped}  (no fees or error)");
+            }
+        }
     }
     Ok(())
 }
