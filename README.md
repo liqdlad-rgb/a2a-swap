@@ -442,6 +442,54 @@ await sendAndConfirmTransaction(conn, tx, [agentKeypair, approverKeypair]);
 
 ## Integration examples
 
+### HTTP API (no SDK, no install)
+
+A stateless Cloudflare Workers JSON API — call it with any HTTP client, from any language, with no SDK installed.
+
+**Live endpoint:** `https://a2a-swap-api.a2a-swap.workers.dev`
+
+```bash
+export BASE=https://a2a-swap-api.a2a-swap.workers.dev
+
+# Service info
+curl "$BASE/"
+
+# Simulate a swap
+curl -X POST "$BASE/simulate" \
+     -H 'Content-Type: application/json' \
+     -d '{"in":"SOL","out":"USDC","amount":1000000000}'
+
+# Build a swap instruction (agent signs + submits)
+curl -X POST "$BASE/convert" \
+     -H 'Content-Type: application/json' \
+     -d '{"in":"SOL","out":"USDC","amount":1000000000,"agent":"<WALLET_PUBKEY>"}'
+
+# Pool reserves, spot price, LP supply
+curl "$BASE/pool-info?pair=SOL-USDC"
+
+# LP positions for a wallet
+curl "$BASE/my-positions?pubkey=<WALLET_PUBKEY>"
+
+# Claimable + pending fees
+curl "$BASE/my-fees?pubkey=<WALLET_PUBKEY>"
+```
+
+| Endpoint | Method | Auth | Description |
+|----------|--------|------|-------------|
+| `/` | GET | — | Service info + endpoint listing |
+| `/health` | GET | — | Liveness check |
+| `/simulate` | POST | — | Quote a swap: amount-out, price-impact, fee |
+| `/convert` | POST | — | Build a ready-to-sign swap instruction |
+| `/pool-info` | GET | — | On-chain reserves, spot prices, LP supply |
+| `/my-positions` | GET | — | All LP positions owned by a wallet |
+| `/my-fees` | GET | — | Claimable + pending fees per position |
+
+`POST /convert` returns a `programId`, `accounts`, and base64-encoded `data` — the agent signs and submits the transaction itself.
+
+**Self-host:** deploy your own instance from [`a2a-swap-api/`](./a2a-swap-api/) with `wrangler deploy`.
+
+---
+
 ### MCP Server (Claude / any MCP-compatible agent)
 
 The fastest way for Claude-based agents to discover and use A2A-Swap.
@@ -608,6 +656,7 @@ async fn main() -> anyhow::Result<()> {
 - [x] ElizaOS plugin (`plugin-a2a-swap`) published to elizaos registry
 - [x] Rust SDK (`a2a-swap-sdk`) published to crates.io
 - [x] CLI (`a2a-swap-cli`) published to crates.io
+- [x] HTTP API (`a2a-swap-api`) live on Cloudflare Workers — no install required
 - [x] Integration test suite (29/29 passing)
 - [x] SOL/USDC pool live on mainnet
 
