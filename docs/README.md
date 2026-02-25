@@ -1,27 +1,44 @@
 # A2A-Swap
 
-> Lightweight constant-product AMM designed for autonomous AI agents on Solana.
-> Zero human involvement required by default.
+**Token swaps for autonomous agents — one call, no UI, no approval.**
 
-**Program ID:** [`8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq`](https://solscan.io/account/8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq)\
-**Network:** Solana mainnet-beta\
-**Protocol fee:** 0.020% (to on-chain treasury PDA)\
-**LP fee range:** 1–100 bps (0.01%–1.00%), set per pool
+[→ Try the HTTP API](http-api.md) · [→ Quickstart in 5 minutes](quickstart.md) · [GitHub](https://github.com/liqdlad-rgb/a2a-swap)
+
+**Program:** [`8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq`](https://solscan.io/account/8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq) · **Network:** Solana mainnet-beta · **Fee:** 0.020% protocol + 1–100 bps LP fee
 
 ---
 
-## What is A2A-Swap?
+## Built for the case where the caller is a bot
 
-A2A-Swap is a constant-product AMM (x·y=k) built from first principles for the case where **the caller is a bot**. Unlike existing DEX aggregators, it exposes no browser widget, no JavaScript bundle, and no human-readable UI. Every operation is a single typed function call or CLI command.
+A2A-Swap is a constant-product AMM (x·y=k) built from first principles for AI agents, trading bots, and on-chain programs. No browser widget. No JavaScript bundle. No human-readable UI. Every operation is a single typed function call or CLI command.
 
-Key properties:
+---
 
-- **Fully headless** — swap, provide liquidity, and claim fees with a single RPC call or CLI command. No wallet pop-ups, no approvals, no UI.
-- **PDA-controlled vaults** — pool vaults are owned by a derived program address. No human key holds authority; no admin can rug.
-- **Deterministic fees** — 0.020% protocol fee + pool-specific LP fee (1–100 bps), fixed on-chain. No routing surprises.
-- **Auto-compound** — accrued LP fees can be reinvested as additional LP shares on-chain, without any vault transfer.
-- **Approval mode** — optional co-signature (`approve_and_execute`) for human-in-the-loop or multi-agent governance, with no on-chain pending state.
-- **Machine-readable capability card** — a JSON constant embedded in the program binary that any agent can read to discover protocol capabilities without an off-chain registry.
+## What you get
+
+### Headless Execution
+
+Swap, provide liquidity, and claim fees with a single RPC call or CLI command. No wallet pop-ups, no approvals, no human-in-the-loop by default.
+
+### Non-Custodial Vaults
+
+Pool vaults are owned by a derived program address (PDA). No admin key holds authority — no pause, no rug, no upgrade without redeployment.
+
+### Predictable Fees
+
+0.020% protocol fee + pool-specific LP fee (1–100 bps), fixed at pool creation and stored on-chain. No routing surprises, no variable aggregator cuts.
+
+### Auto-Compound
+
+Accrued LP fees are reinvested as additional LP shares on-chain without any vault transfer. No harvest transaction, no gas waste.
+
+### Approval Mode
+
+Optional co-signature (`approve_and_execute`) for human-in-the-loop or multi-agent governance. No on-chain pending state — both keys sign the same transaction.
+
+### Capability Card
+
+A JSON manifest embedded in the program binary. Any agent can read the protocol's capabilities (fee rates, instruction names, supported features) without an off-chain registry.
 
 ---
 
@@ -40,9 +57,7 @@ Key properties:
 
 ---
 
-## Integration options
-
-Choose the integration that fits your stack:
+## Choose your integration
 
 | Method | Best for | Requires |
 |--------|----------|----------|
@@ -51,7 +66,7 @@ Choose the integration that fits your stack:
 | [**Rust SDK**](rust-sdk.md) | High-performance agents, on-chain CPI callers | `cargo add` |
 | [**LangChain / CrewAI**](langchain.md) | Python AI pipelines | `pip install` + CLI |
 | [**CLI**](quickstart.md) | Shell automation, devops, one-off commands | `cargo install` |
-| [**MCP Server**](quickstart.md#mcp-server) | Claude and any MCP-compatible agent host | `npm install -g` |
+| [**MCP Server**](quickstart.md#mcp-server) | Claude and any MCP-compatible agent host | `npx` |
 
 ---
 
@@ -59,7 +74,7 @@ Choose the integration that fits your stack:
 
 | Resource | Address / Link |
 |----------|----------------|
-| Program | `8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq` |
+| Program | [`8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq`](https://solscan.io/account/8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq) |
 | SOL/USDC pool | `BtBL5wpMbmabFimeUmLtjZAAeh4xWWf76NSpefMXb4TC` |
 | HTTP API | `https://a2a-swap-api.a2a-swap.workers.dev` |
 | GitHub | [liqdlad-rgb/a2a-swap](https://github.com/liqdlad-rgb/a2a-swap) |
