@@ -8,6 +8,21 @@
 ///   swap                — direct atomic swap; zero-human by default
 ///   approve_and_execute — swap requiring agent + human/co-agent signatures
 
+// ─── Security contact ─────────────────────────────────────────────────────────
+
+use solana_security_txt::security_txt;
+
+#[cfg(not(feature = "no-entrypoint"))]
+security_txt! {
+    name:             "A2A-Swap",
+    project_url:      "https://github.com/liqdlad-rgb/a2a-swap",
+    contacts:         "email:liqdlad@gmail.com",
+    policy:           "Please report security vulnerabilities by emailing liqdlad@gmail.com. \
+                       We aim to respond within 48 hours.",
+    source_code:      "https://github.com/liqdlad-rgb/a2a-swap",
+    preferred_languages: "en"
+}
+
 // ─── A2A Capability Card ──────────────────────────────────────────────────────
 //
 // Machine-readable protocol description following the A2A Agent Card spec.
