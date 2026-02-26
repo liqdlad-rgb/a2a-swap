@@ -12,6 +12,16 @@
 - **Upgrade tx:** `3NUqsMVPVegXGjdiBXwJTd97hjrW25En7psoUMcPyKL3ct73KhBQ5ocxw62JZnBbt7kybxG2kPCUUuzp79LahMv8`
 - **Re-verified** — on-chain verification PDA updated (tx `4izBmbLgG8TfPihyMREeEGZckzZKt2WXVhZs5bJ3KpqfCVb7WNt7sM8cva3nSeFiwJWXVf8nDo8xQ1A2Mbv8i8oi`) against commit `e316978`.
 
+### ElizaOS Plugin `v1.0.0` (`@liqdlad/eliza-plugin-a2a-swap`)
+- New: deep, first-class ElizaOS plugin superseding `@liqdlad/plugin-a2a-swap`
+- New: Zod parameter validation on every action
+- New: `A2A_EXECUTE_SWAP` — auto-simulates before executing (shows fee breakdown + price impact; warns if >5%)
+- New: `A2A_GET_CAPABILITY_CARD` — self-discovery action for ReAct/planner agents
+- New: `A2A_ADD_LIQUIDITY`, `A2A_REMOVE_LIQUIDITY`, `A2A_GET_POOL_INFO` with Zod schemas
+- New: Solscan tx links in every success message
+- New: 10–13 LLM-optimized similes per action for better trigger coverage
+- New: accepts both `SOLANA_PRIVATE_KEY` and `AGENT_PRIVATE_KEY` env vars
+
 ### CLI `v0.1.5`
 - Fix: corrected GitHub docs URL shown in CLI banner (`a2a-swap/a2a-swap` → `liqdlad-rgb/a2a-swap`)
 

@@ -567,12 +567,11 @@ Any other token accepts a raw base-58 mint address.
 ### ElizaOS (TypeScript)
 
 ```bash
-elizaos plugins add plugin-a2a-swap
-# or manually: npm install @liqdlad/plugin-a2a-swap
+npm install @liqdlad/eliza-plugin-a2a-swap
 ```
 
 ```typescript
-import { a2aSwapPlugin } from '@liqdlad/plugin-a2a-swap';
+import a2aSwapPlugin from '@liqdlad/eliza-plugin-a2a-swap';
 import { AgentRuntime } from '@elizaos/core';
 
 const runtime = new AgentRuntime({
@@ -581,17 +580,33 @@ const runtime = new AgentRuntime({
 });
 ```
 
-Registers seven actions automatically:
+Or add it to your `character.json`:
+
+```json
+{
+  "plugins": ["@liqdlad/eliza-plugin-a2a-swap"],
+  "settings": {
+    "secrets": { "SOLANA_PRIVATE_KEY": "[1,2,3,...,64]" }
+  }
+}
+```
+
+Registers five actions automatically:
 
 | Action | Trigger phrases |
 |--------|-----------------|
-| `A2A_SIMULATE_SWAP` | "simulate swap", "estimate swap", "quote swap" |
-| `A2A_SWAP` | "swap tokens", "trade tokens", "exchange tokens" |
-| `A2A_PROVIDE_LIQUIDITY` | "provide liquidity", "add liquidity", "add to pool" |
-| `A2A_REMOVE_LIQUIDITY` | "remove liquidity", "withdraw liquidity", "exit pool" |
-| `A2A_CLAIM_FEES` | "claim fees", "collect fees", "harvest fees" |
-| `A2A_POOL_INFO` | "pool info", "pool stats", "check pool" |
-| `A2A_MY_FEES` | "my fees", "check fees", "claimable fees" |
+| `A2A_EXECUTE_SWAP` | "swap tokens", "exchange tokens", "buy USDC with SOL", "sell SOL", "atomic swap" |
+| `A2A_ADD_LIQUIDITY` | "add liquidity", "provide liquidity", "deposit into pool", "become LP" |
+| `A2A_REMOVE_LIQUIDITY` | "remove liquidity", "withdraw liquidity", "exit pool", "burn LP shares" |
+| `A2A_GET_POOL_INFO` | "pool info", "pool reserves", "what is the spot price", "check pool depth" |
+| `A2A_GET_CAPABILITY_CARD` | "what can A2A-Swap do", "describe the AMM", "show me the capability card" |
+
+`A2A_EXECUTE_SWAP` automatically simulates the swap first and includes the fee breakdown
+and price impact in the agent's message before committing. Every action includes a Solscan
+tx link in its success output.
+
+> The original `@liqdlad/plugin-a2a-swap` (v0.1.3, 7 actions) is still published and works,
+> but `@liqdlad/eliza-plugin-a2a-swap` is the recommended integration going forward.
 
 ### TypeScript SDK
 
@@ -683,7 +698,8 @@ async fn main() -> anyhow::Result<()> {
 - [x] CLI — `simulate`, `convert`, `create-pool`, `provide`, `my-positions`, `pool-info`, `my-fees`, `remove-liquidity`, `claim-fees`
 - [x] TypeScript SDK (`@liqdlad/a2a-swap-sdk`) published to npm
 - [x] MCP server (`@liqdlad/mcp-a2a-swap`) published to npm + Smithery
-- [x] ElizaOS plugin (`plugin-a2a-swap`) published to elizaos registry
+- [x] ElizaOS plugin v1.0.0 (`@liqdlad/eliza-plugin-a2a-swap`) — deep integration with Zod, auto-simulate, capability card
+- [x] ElizaOS plugin v0.1.3 (`@liqdlad/plugin-a2a-swap`) — original plugin, still published
 - [x] Rust SDK (`a2a-swap-sdk`) published to crates.io
 - [x] CLI (`a2a-swap-cli`) published to crates.io
 - [x] HTTP API (`a2a-swap-api`) live on Cloudflare Workers — no install required
