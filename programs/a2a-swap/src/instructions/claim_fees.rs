@@ -33,10 +33,12 @@ pub fn handler(ctx: Context<ClaimFees>) -> Result<()> {
     let do_compound =
         ctx.accounts.position.auto_compound && total >= threshold && lp_supply > 0;
 
-    if do_compound {
-        // ── Auto-compound: convert fees → LP shares ──────────────────────
-        // new_lp = min(fees_a * lp_supply / reserve_a, fees_b * lp_supply / reserve_b)
-        // Tokens stay in vault; we just award proportional LP share increase.
+    // ── Auto-compound: convert fees → LP shares ──────────────────────────────
+    // new_lp = min(fees_a * lp_supply / reserve_a, fees_b * lp_supply / reserve_b)
+    // Tokens stay in vault; we just award proportional LP share increase.
+    // Falls back to direct transfer if either reserve is drained (new_lp == 0),
+    // preventing permanent fee loss.
+    let compound_succeeded = if do_compound {
         let new_lp = {
             let from_a = if reserve_a > 0 {
                 (fees_a as u128)
@@ -57,20 +59,31 @@ pub fn handler(ctx: Context<ClaimFees>) -> Result<()> {
             from_a.min(from_b) as u64
         };
 
-        ctx.accounts.position.lp_shares = ctx
-            .accounts
-            .position
-            .lp_shares
-            .checked_add(new_lp)
-            .ok_or(A2AError::MathOverflow)?;
-        ctx.accounts.pool.lp_supply = lp_supply
-            .checked_add(new_lp)
-            .ok_or(A2AError::MathOverflow)?;
-        ctx.accounts.position.fees_owed_a = 0;
-        ctx.accounts.position.fees_owed_b = 0;
-
-        msg!("Fees auto-compounded: new_lp={} from a={} b={}", new_lp, fees_a, fees_b);
+        if new_lp > 0 {
+            ctx.accounts.position.lp_shares = ctx
+                .accounts
+                .position
+                .lp_shares
+                .checked_add(new_lp)
+                .ok_or(A2AError::MathOverflow)?;
+            ctx.accounts.pool.lp_supply = lp_supply
+                .checked_add(new_lp)
+                .ok_or(A2AError::MathOverflow)?;
+            ctx.accounts.position.fees_owed_a = 0;
+            ctx.accounts.position.fees_owed_b = 0;
+            msg!("Fees auto-compounded: new_lp={} from a={} b={}", new_lp, fees_a, fees_b);
+            true
+        } else {
+            // Reserves too low to mint any LP shares — fall through to direct transfer
+            // so fees are not lost.
+            msg!("Compound yielded 0 LP shares (reserves low) — transferring fees instead: a={} b={}", fees_a, fees_b);
+            false
+        }
     } else {
+        false
+    };
+
+    if !compound_succeeded {
         // ── Manual claim: transfer fees out of vaults ─────────────────────
         ctx.accounts.position.fees_owed_a = 0;
         ctx.accounts.position.fees_owed_b = 0;

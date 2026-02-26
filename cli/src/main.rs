@@ -443,7 +443,7 @@ fn print_banner() {
     println!("  Program   {PROGRAM_ID}");
     println!("  Network   Solana mainnet-beta");
     println!("  Fees      0.020% protocol  +  0.01%–1.00% LP (per pool)");
-    println!("  Docs      https://github.com/a2a-swap/a2a-swap");
+    println!("  Docs      https://github.com/liqdlad-rgb/a2a-swap");
     println!();
 }
 

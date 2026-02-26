@@ -1,9 +1,10 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
 use crate::{constants::*, error::A2AError, state::Pool};
+use super::fee_math::compute_swap;
 
 /// Optional human-approval hook.
-/// Identical to `swap` (including the 0.02% protocol fee) but requires BOTH
+/// Identical to `swap` (including the 0.020% protocol fee) but requires BOTH
 /// the agent AND a designated approver to sign the transaction.
 /// The approver's signature IS the approval — no on-chain pending state.
 ///
@@ -25,55 +26,28 @@ pub fn handler(
     let reserve_b = ctx.accounts.token_b_vault.amount as u128;
     require!(reserve_a > 0 && reserve_b > 0, A2AError::InsufficientLiquidity);
 
-    let in_u128 = amount_in as u128;
-    let fee_bps = ctx.accounts.pool.fee_rate_bps as u128;
-
-    // ── Protocol fee (0.02%) ─────────────────────────────────────────────────
-    let protocol_fee = in_u128
-        .checked_mul(PROTOCOL_FEE_BPS as u128)
-        .ok_or(A2AError::MathOverflow)?
-        / PROTOCOL_FEE_DENOMINATOR;
-    let net_pool_input = in_u128 - protocol_fee;
-
-    // ── LP fee (pool.fee_rate_bps) ───────────────────────────────────────────
-    let lp_fee = net_pool_input
-        .checked_mul(fee_bps)
-        .ok_or(A2AError::MathOverflow)?
-        / BPS_DENOMINATOR;
-    let after_fees = net_pool_input - lp_fee;
-
-    // ── Constant-product output ──────────────────────────────────────────────
     let (reserve_in, reserve_out) = if a_to_b {
         (reserve_a, reserve_b)
     } else {
         (reserve_b, reserve_a)
     };
-    let amount_out = reserve_out
-        .checked_mul(after_fees)
-        .ok_or(A2AError::MathOverflow)?
-        / reserve_in
-            .checked_add(after_fees)
-            .ok_or(A2AError::MathOverflow)?;
-    let amount_out = amount_out as u64;
 
-    require!(amount_out >= min_amount_out, A2AError::SlippageExceeded);
-    require!(amount_out > 0, A2AError::ZeroAmount);
+    let sa = compute_swap(
+        amount_in,
+        ctx.accounts.pool.fee_rate_bps,
+        reserve_in,
+        reserve_out,
+        ctx.accounts.pool.lp_supply,
+        min_amount_out,
+    )?;
 
     // ── Update fee_growth_global ─────────────────────────────────────────────
-    let lp_supply = ctx.accounts.pool.lp_supply;
-    if lp_supply > 0 && lp_fee > 0 {
-        let q = lp_fee / lp_supply as u128;
-        let r = lp_fee % lp_supply as u128;
-        let delta = q
-            .checked_mul(Q64)
-            .ok_or(A2AError::MathOverflow)?
-            .checked_add(r * Q64 / lp_supply as u128)
-            .ok_or(A2AError::MathOverflow)?;
+    if sa.fee_growth_delta > 0 {
         let pool = &mut ctx.accounts.pool;
         if a_to_b {
-            pool.fee_growth_global_a = pool.fee_growth_global_a.saturating_add(delta);
+            pool.fee_growth_global_a = pool.fee_growth_global_a.saturating_add(sa.fee_growth_delta);
         } else {
-            pool.fee_growth_global_b = pool.fee_growth_global_b.saturating_add(delta);
+            pool.fee_growth_global_b = pool.fee_growth_global_b.saturating_add(sa.fee_growth_delta);
         }
     }
 
@@ -82,12 +56,9 @@ pub fn handler(
     let seeds: &[&[u8]] = &[POOL_AUTHORITY_SEED, pool_key.as_ref(), &[authority_bump]];
     let signer = &[seeds];
 
-    let protocol_fee_u64 = protocol_fee as u64;
-    let net_pool_input_u64 = net_pool_input as u64;
-
     if a_to_b {
         // 1. Protocol fee → treasury
-        if protocol_fee_u64 > 0 {
+        if sa.protocol_fee > 0 {
             token::transfer(
                 CpiContext::new(
                     ctx.accounts.token_program.to_account_info(),
@@ -97,7 +68,7 @@ pub fn handler(
                         authority: ctx.accounts.agent.to_account_info(),
                     },
                 ),
-                protocol_fee_u64,
+                sa.protocol_fee,
             )?;
         }
         // 2. Net input → vault_a
@@ -110,7 +81,7 @@ pub fn handler(
                     authority: ctx.accounts.agent.to_account_info(),
                 },
             ),
-            net_pool_input_u64,
+            sa.net_pool_input,
         )?;
         // 3. Output: vault_b → agent
         token::transfer(
@@ -123,11 +94,11 @@ pub fn handler(
                 },
                 signer,
             ),
-            amount_out,
+            sa.amount_out,
         )?;
     } else {
         // 1. Protocol fee → treasury
-        if protocol_fee_u64 > 0 {
+        if sa.protocol_fee > 0 {
             token::transfer(
                 CpiContext::new(
                     ctx.accounts.token_program.to_account_info(),
@@ -137,7 +108,7 @@ pub fn handler(
                         authority: ctx.accounts.agent.to_account_info(),
                     },
                 ),
-                protocol_fee_u64,
+                sa.protocol_fee,
             )?;
         }
         // 2. Net input → vault_b
@@ -150,7 +121,7 @@ pub fn handler(
                     authority: ctx.accounts.agent.to_account_info(),
                 },
             ),
-            net_pool_input_u64,
+            sa.net_pool_input,
         )?;
         // 3. Output: vault_a → agent
         token::transfer(
@@ -163,7 +134,7 @@ pub fn handler(
                 },
                 signer,
             ),
-            amount_out,
+            sa.amount_out,
         )?;
     }
 
@@ -172,9 +143,9 @@ pub fn handler(
         ctx.accounts.agent.key(),
         ctx.accounts.approver.key(),
         amount_in,
-        protocol_fee_u64,
-        lp_fee,
-        amount_out,
+        sa.protocol_fee,
+        sa.lp_fee,
+        sa.amount_out,
         a_to_b
     );
     Ok(())
@@ -211,15 +182,22 @@ pub struct ApproveAndExecute<'info> {
     )]
     pub token_b_vault: Box<Account<'info, TokenAccount>>,
 
+    /// Token account the agent is selling from — must hold one of the pool's tokens
     #[account(
         mut,
         constraint = agent_token_in.owner == agent.key(),
+        constraint = (agent_token_in.mint == pool.token_a_mint
+            || agent_token_in.mint == pool.token_b_mint) @ A2AError::MintMismatch,
     )]
     pub agent_token_in: Box<Account<'info, TokenAccount>>,
 
+    /// Token account the agent is receiving into — must be the other pool token
     #[account(
         mut,
         constraint = agent_token_out.owner == agent.key(),
+        constraint = (agent_token_out.mint == pool.token_a_mint
+            || agent_token_out.mint == pool.token_b_mint) @ A2AError::MintMismatch,
+        constraint = agent_token_out.mint != agent_token_in.mint @ A2AError::MintMismatch,
     )]
     pub agent_token_out: Box<Account<'info, TokenAccount>>,
 
