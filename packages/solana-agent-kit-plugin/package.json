@@ -1,0 +1,74 @@
+{
+  "name": "@liqdlad/solana-agent-kit-plugin",
+  "version": "1.0.0",
+  "description": "Solana Agent Kit plugin for A2A-Swap — the agent-native constant-product AMM on Solana. Ultra-cheap swaps (~40k CU), fixed 0.02% fee, PDA custody, auto-compounding LP fees.",
+  "type": "module",
+  "main": "dist/index.cjs",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --dts --clean --format cjs,esm --out-dir dist",
+    "dev": "tsup src/index.ts --dts --format cjs,esm --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "solana",
+    "agent",
+    "plugin",
+    "solana-agent-kit",
+    "amm",
+    "defi",
+    "swap",
+    "liquidity",
+    "autonomous",
+    "ai",
+    "a2a-swap"
+  ],
+  "author": "A2A-Swap Contributors",
+  "license": "MIT",
+  "homepage": "https://github.com/liqdlad-rgb/a2a-swap#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/liqdlad-rgb/a2a-swap.git",
+    "directory": "packages/solana-agent-kit-plugin"
+  },
+  "bugs": {
+    "url": "https://github.com/liqdlad-rgb/a2a-swap/issues"
+  },
+  "dependencies": {
+    "@liqdlad/a2a-swap-sdk": "^0.1.2",
+    "zod": "^3.22.0"
+  },
+  "peerDependencies": {
+    "@solana/web3.js": "^1.95.0",
+    "solana-agent-kit": ">=2.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "solana-agent-kit": "^2.0.7",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
