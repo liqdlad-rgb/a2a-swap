@@ -1,0 +1,88 @@
+{
+  "name": "@liqdlad/eliza-plugin-a2a-swap",
+  "version": "1.0.0",
+  "description": "Deep ElizaOS plugin for A2A-Swap — the agent-native constant-product AMM on Solana. Swap, provide/remove liquidity, claim fees, and self-discover pool capabilities.",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "module": "dist/index.esm.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.esm.js",
+      "require": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts --clean",
+    "dev": "tsup src/index.ts --format cjs,esm --dts --watch",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "elizaos",
+    "eliza",
+    "plugin",
+    "solana",
+    "amm",
+    "defi",
+    "swap",
+    "liquidity",
+    "agent",
+    "autonomous",
+    "ai",
+    "a2a-swap"
+  ],
+  "author": "A2A-Swap Contributors",
+  "license": "MIT",
+  "homepage": "https://github.com/liqdlad-rgb/a2a-swap#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/liqdlad-rgb/a2a-swap.git",
+    "directory": "eliza-plugin"
+  },
+  "bugs": {
+    "url": "https://github.com/liqdlad-rgb/a2a-swap/issues"
+  },
+  "peerDependencies": {
+    "@elizaos/core": ">=1.0.0"
+  },
+  "dependencies": {
+    "@liqdlad/a2a-swap-sdk": "^0.1.2",
+    "@solana/web3.js": "^1.95.4",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@elizaos/core": "^1.0.0",
+    "@types/node": "^20.0.0",
+    "tsup": "^8.0.0",
+    "typescript": "^5.3.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "agentConfig": {
+    "pluginType": "elizaos:plugin:1.0.0",
+    "pluginParameters": {
+      "SOLANA_PRIVATE_KEY": {
+        "type": "string",
+        "description": "Agent wallet secret key as a JSON byte array (e.g. [1,2,3,...]). Also accepted as AGENT_PRIVATE_KEY for backwards compatibility.",
+        "required": true,
+        "secret": true
+      },
+      "SOLANA_RPC_URL": {
+        "type": "string",
+        "description": "Solana RPC endpoint URL. Defaults to https://api.mainnet-beta.solana.com",
+        "required": false
+      }
+    }
+  },
+  "packageType": "plugin",
+  "platform": "node",
+  "npmPackage": "@liqdlad/eliza-plugin-a2a-swap"
+}
