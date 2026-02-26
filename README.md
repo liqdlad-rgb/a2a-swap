@@ -564,6 +564,52 @@ Any other token accepts a raw base-58 mint address.
 
 ---
 
+### Solana Agent Kit (TypeScript)
+
+```bash
+npm install @liqdlad/solana-agent-kit-plugin
+```
+
+```typescript
+import { SolanaAgentKit, KeypairWallet, createVercelAITools } from 'solana-agent-kit';
+import A2ASwapPlugin from '@liqdlad/solana-agent-kit-plugin';
+import { Keypair } from '@solana/web3.js';
+
+const wallet = new KeypairWallet(Keypair.fromSecretKey(secretKey), RPC_URL);
+const agent  = new SolanaAgentKit(wallet, RPC_URL, {}).use(A2ASwapPlugin);
+
+// AI tools (Vercel AI SDK / LangChain / OpenAI Agents)
+const tools = createVercelAITools(agent, agent.actions);
+
+// Programmatic API
+const result = await agent.methods.a2aSwap(agent, SOL, USDC, 1_000_000_000n);
+```
+
+Registers five AI actions and eight programmatic methods:
+
+| AI Action | LLM trigger phrases |
+|-----------|---------------------|
+| `A2A_SWAP` | "swap tokens on A2A", "convert SOL to USDC cheaply", "single-hop swap 40k CU" |
+| `A2A_ADD_LIQUIDITY` | "add liquidity to A2A pool", "provide liquidity A2A", "become LP on A2A" |
+| `A2A_REMOVE_LIQUIDITY` | "remove liquidity from A2A", "burn LP shares A2A", "withdraw from A2A pool" |
+| `A2A_GET_POOL_INFO` | "get A2A pool info", "check A2A pool reserves", "A2A pool spot price" |
+| `A2A_GET_CAPABILITY_CARD` | "what can A2A-Swap do", "describe the A2A AMM", "show A2A capability card" |
+
+| Programmatic method | Description |
+|---------------------|-------------|
+| `a2aSwap` | Execute swap |
+| `a2aSimulate` | Simulate swap (no tx) |
+| `a2aAddLiquidity` | Deposit tokens |
+| `a2aRemoveLiquidity` | Burn LP shares |
+| `a2aClaimFees` | Claim or auto-compound fees |
+| `a2aPoolInfo` | Read pool state |
+| `a2aMyPositions` | List LP positions |
+| `a2aMyFees` | Aggregate fee totals |
+
+Compatible with Vercel AI SDK, LangChain, and OpenAI Agents framework adapters.
+
+---
+
 ### ElizaOS (TypeScript)
 
 ```bash
@@ -698,6 +744,7 @@ async fn main() -> anyhow::Result<()> {
 - [x] CLI — `simulate`, `convert`, `create-pool`, `provide`, `my-positions`, `pool-info`, `my-fees`, `remove-liquidity`, `claim-fees`
 - [x] TypeScript SDK (`@liqdlad/a2a-swap-sdk`) published to npm
 - [x] MCP server (`@liqdlad/mcp-a2a-swap`) published to npm + Smithery
+- [x] Solana Agent Kit plugin v1.0.0 (`@liqdlad/solana-agent-kit-plugin`) — 5 AI actions, 8 methods, `.use(A2ASwapPlugin)` drop-in
 - [x] ElizaOS plugin v1.0.0 (`@liqdlad/eliza-plugin-a2a-swap`) — deep integration with Zod, auto-simulate, capability card
 - [x] ElizaOS plugin v0.1.3 (`@liqdlad/plugin-a2a-swap`) — original plugin, still published
 - [x] Rust SDK (`a2a-swap-sdk`) published to crates.io

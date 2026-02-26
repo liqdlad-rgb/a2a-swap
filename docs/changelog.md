@@ -12,6 +12,17 @@
 - **Upgrade tx:** `3NUqsMVPVegXGjdiBXwJTd97hjrW25En7psoUMcPyKL3ct73KhBQ5ocxw62JZnBbt7kybxG2kPCUUuzp79LahMv8`
 - **Re-verified** — on-chain verification PDA updated (tx `4izBmbLgG8TfPihyMREeEGZckzZKt2WXVhZs5bJ3KpqfCVb7WNt7sM8cva3nSeFiwJWXVf8nDo8xQ1A2Mbv8i8oi`) against commit `e316978`.
 
+### Solana Agent Kit Plugin `v1.0.0` (`@liqdlad/solana-agent-kit-plugin`)
+- New: deep, official-style plugin for Solana Agent Kit v2 — `.use(A2ASwapPlugin)` pattern
+- New: 5 AI actions with full Zod schemas and 12–13 LLM-optimized similes each:
+  `A2A_SWAP`, `A2A_ADD_LIQUIDITY`, `A2A_REMOVE_LIQUIDITY`, `A2A_GET_POOL_INFO`, `A2A_GET_CAPABILITY_CARD`
+- New: 8 programmatic methods on `agent.methods`:
+  `a2aSwap`, `a2aSimulate`, `a2aAddLiquidity`, `a2aRemoveLiquidity`, `a2aClaimFees`, `a2aPoolInfo`, `a2aMyPositions`, `a2aMyFees`
+- New: `A2A_SWAP` auto-simulates before executing (fee breakdown + price impact warning if >5%)
+- New: Solscan tx links in every write-operation response
+- New: `extractSigner` bridges `KeypairWallet` to `A2ASwapClient` (TypeScript-private field access)
+- Compatible with Vercel AI SDK, LangChain, and OpenAI Agents via SAK framework adapters
+
 ### ElizaOS Plugin `v1.0.0` (`@liqdlad/eliza-plugin-a2a-swap`)
 - New: deep, first-class ElizaOS plugin superseding `@liqdlad/plugin-a2a-swap`
 - New: Zod parameter validation on every action
