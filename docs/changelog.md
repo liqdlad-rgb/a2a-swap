@@ -2,6 +2,21 @@
 
 ---
 
+## 2026-02-26
+
+### Program — Security patch (upgrade required)
+- **Fix (HIGH):** `claim_fees` — when `auto_compound = true` and pool reserves were zero, `fees_owed` was silently zeroed with no transfer or LP credit, permanently destroying accumulated fees. The handler now falls back to a direct fee transfer when `new_lp == 0`.
+- **Fix (HIGH):** `swap` / `approve_and_execute` — `agent_token_in` and `agent_token_out` were only validated for owner; mint membership in the pool was not checked. Explicit `MintMismatch` constraints now enforce both mints belong to the pool and are distinct.
+- **Fix (LOW):** Extracted shared `compute_swap()` into `fee_math.rs`, eliminating duplicated arithmetic between `swap` and `approve_and_execute`.
+- **Fix (INFO):** Corrected comment typo `0.025%` → `0.020%` in `swap.rs`.
+- **Upgrade tx:** `3NUqsMVPVegXGjdiBXwJTd97hjrW25En7psoUMcPyKL3ct73KhBQ5ocxw62JZnBbt7kybxG2kPCUUuzp79LahMv8`
+- **Re-verified** — on-chain verification PDA updated (tx `4izBmbLgG8TfPihyMREeEGZckzZKt2WXVhZs5bJ3KpqfCVb7WNt7sM8cva3nSeFiwJWXVf8nDo8xQ1A2Mbv8i8oi`) against commit `e316978`.
+
+### CLI `v0.1.5`
+- Fix: corrected GitHub docs URL shown in CLI banner (`a2a-swap/a2a-swap` → `liqdlad-rgb/a2a-swap`)
+
+---
+
 ## 2026-02-25
 
 ### Program
