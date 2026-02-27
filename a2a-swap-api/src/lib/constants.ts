@@ -41,4 +41,4 @@ export const PROTOCOL_FEE_BPS  = 20n;
 export const PROTOCOL_FEE_DENOM = 100_000n;
 export const BPS_DENOM          = 10_000n;
 
-export const VERSION = '0.2.0';
+export const VERSION = '0.3.0';
