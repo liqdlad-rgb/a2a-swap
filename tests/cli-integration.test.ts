@@ -43,7 +43,7 @@ import {
   derivePosition,
   swapIx,
   instructionDisc,
-} from "../sdk-ts/src";
+} from "../packages/sdk-ts/src";
 
 // ─── Helpers that mirror on-chain arithmetic ──────────────────────────────────
 

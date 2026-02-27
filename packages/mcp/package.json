@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/liqdlad-rgb/a2a-swap.git",
-    "directory": "mcp-a2a-swap"
+    "directory": "packages/mcp"
   },
   "bugs": {
     "url": "https://github.com/liqdlad-rgb/a2a-swap/issues"

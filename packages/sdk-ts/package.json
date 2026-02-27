@@ -8,7 +8,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/a2a-swap/a2a-swap.git",
-    "directory": "sdk-ts"
+    "directory": "packages/sdk-ts"
   },
   "bugs": {
     "url": "https://github.com/a2a-swap/a2a-swap/issues"

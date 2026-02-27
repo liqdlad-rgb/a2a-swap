@@ -1,8 +1,8 @@
 [workspace]
 members = [
     "programs/*",
-    "cli",
-    "sdk",
+    "packages/cli",
+    "packages/sdk-rust",
 ]
 resolver = "2"
 

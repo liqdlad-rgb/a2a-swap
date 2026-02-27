@@ -41,7 +41,7 @@
   "repository": {
     "type": "git",
     "url": "git+https://github.com/liqdlad-rgb/a2a-swap.git",
-    "directory": "eliza-plugin"
+    "directory": "packages/eliza-plugin"
   },
   "bugs": {
     "url": "https://github.com/liqdlad-rgb/a2a-swap/issues"
