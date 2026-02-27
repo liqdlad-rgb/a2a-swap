@@ -219,7 +219,7 @@ router.post('/', async (c) => {
   const treasury    = resolveTreasury();
 
   const mintInPk    = new PublicKey(mintIn);
-  const mintOutPk   = new PublicKey(mintOut);  // unused as AccountMeta but needed for ATA derivation
+  const mintOutPk   = new PublicKey(mintOut);
 
   const agentInAta    = resolveAta(agentPk, mintInPk);
   const agentOutAta   = resolveAta(agentPk, mintOutPk);
@@ -263,11 +263,10 @@ router.post('/', async (c) => {
     wrappedSol = true;
   }
 
-  // If tokenOut is SOL: ensure wSOL output ATA exists before the swap.
-  if (mintOut === WSOL_MINT) {
-    tx.add(createAtaIdempotentIx(agentPk, agentOutAta, agentPk, wsolMintPk));
-    wrappedSol = true;
-  }
+  // Always ensure the output ATA exists before the swap (idempotent — no-op if already created).
+  // This covers first-time recipients of any token, including exotic mints.
+  tx.add(createAtaIdempotentIx(agentPk, agentOutAta, agentPk, mintOutPk));
+  if (mintOut === WSOL_MINT) wrappedSol = true;
 
   tx.add(swapIx);
 
