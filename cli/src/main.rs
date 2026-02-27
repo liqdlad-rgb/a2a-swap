@@ -19,6 +19,62 @@ use std::str::FromStr;
 /// System program — hardcoded to avoid deprecated solana_sdk::system_program
 const SYSTEM_PROGRAM_ID: &str = "11111111111111111111111111111111";
 
+const WSOL_MINT: &str = "So11111111111111111111111111111111111111112";
+
+// ─── wSOL helpers ─────────────────────────────────────────────────────────────
+
+/// createAssociatedTokenAccountIdempotent — no-op if ATA already exists.
+fn create_ata_idempotent_ix(payer: &Pubkey, ata: &Pubkey, owner: &Pubkey, mint: &Pubkey) -> Result<Instruction> {
+    Ok(Instruction {
+        program_id: Pubkey::from_str(ATA_PROGRAM_ID)?,
+        accounts: vec![
+            AccountMeta::new(*payer, true),
+            AccountMeta::new(*ata, false),
+            AccountMeta::new_readonly(*owner, false),
+            AccountMeta::new_readonly(*mint, false),
+            AccountMeta::new_readonly(Pubkey::from_str(SYSTEM_PROGRAM_ID)?, false),
+            AccountMeta::new_readonly(Pubkey::from_str(TOKEN_PROGRAM_ID)?, false),
+        ],
+        data: vec![1],  // 1 = CreateIdempotent
+    })
+}
+
+/// syncNative (SPL Token ix 17) — credit deposited lamports as token balance.
+fn sync_native_ix(wsol_ata: &Pubkey) -> Result<Instruction> {
+    Ok(Instruction {
+        program_id: Pubkey::from_str(TOKEN_PROGRAM_ID)?,
+        accounts: vec![AccountMeta::new(*wsol_ata, false)],
+        data: vec![17],
+    })
+}
+
+/// closeAccount (SPL Token ix 9) — burn wSOL ATA and return lamports as native SOL.
+fn close_account_ix(account: &Pubkey, destination: &Pubkey, owner: &Pubkey) -> Result<Instruction> {
+    Ok(Instruction {
+        program_id: Pubkey::from_str(TOKEN_PROGRAM_ID)?,
+        accounts: vec![
+            AccountMeta::new(*account, false),
+            AccountMeta::new(*destination, false),
+            AccountMeta::new_readonly(*owner, true),
+        ],
+        data: vec![9],
+    })
+}
+
+/// SystemProgram.transfer — move lamports from wallet into wSOL ATA.
+fn system_transfer_ix(from: &Pubkey, to: &Pubkey, lamports: u64) -> Result<Instruction> {
+    let mut data = vec![2u8, 0, 0, 0];  // Transfer instruction index (u32 LE)
+    data.extend_from_slice(&lamports.to_le_bytes());
+    Ok(Instruction {
+        program_id: Pubkey::from_str(SYSTEM_PROGRAM_ID)?,
+        accounts: vec![
+            AccountMeta::new(*from, true),
+            AccountMeta::new(*to, false),
+        ],
+        data,
+    })
+}
+
 // ─── Program constants ────────────────────────────────────────────────────────
 
 const PROGRAM_ID: &str           = "8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq";
@@ -1281,7 +1337,7 @@ fn cmd_convert(
     ix_data.extend_from_slice(&min_amount_out.to_le_bytes());
     ix_data.push(a_to_b as u8);
 
-    let ix = Instruction {
+    let swap_ix = Instruction {
         program_id,
         data: ix_data,
         accounts: vec![
@@ -1298,7 +1354,29 @@ fn cmd_convert(
         ],
     };
 
-    let sig = sign_and_send(&client, &[ix], &payer, &[&payer])
+    let wsol_mint = Pubkey::from_str(WSOL_MINT)?;
+    let mut instructions: Vec<Instruction> = Vec::new();
+
+    // If tokenIn is SOL: wrap native SOL → wSOL ATA before the swap.
+    if mint_in == wsol_mint {
+        instructions.push(create_ata_idempotent_ix(&payer.pubkey(), &ata_in, &payer.pubkey(), &wsol_mint)?);
+        instructions.push(system_transfer_ix(&payer.pubkey(), &ata_in, amount_in)?);
+        instructions.push(sync_native_ix(&ata_in)?);
+    }
+
+    // If tokenOut is SOL: ensure the wSOL output ATA exists before the swap.
+    if mint_out == wsol_mint {
+        instructions.push(create_ata_idempotent_ix(&payer.pubkey(), &ata_out, &payer.pubkey(), &wsol_mint)?);
+    }
+
+    instructions.push(swap_ix);
+
+    // If tokenOut is SOL: close the wSOL ATA and return lamports as native SOL.
+    if mint_out == wsol_mint {
+        instructions.push(close_account_ix(&ata_out, &payer.pubkey(), &payer.pubkey())?);
+    }
+
+    let sig = sign_and_send(&client, &instructions, &payer, &[&payer])
         .context("swap transaction failed")?;
 
     if json_output {

@@ -6,6 +6,7 @@ import {
   Connection,
   Keypair,
   PublicKey,
+  SystemProgram,
   Transaction,
   TransactionInstruction,
   sendAndConfirmTransaction,
@@ -14,6 +15,8 @@ import {
 import { parsePool, parsePosition, parseTokenAmount } from './state';
 import { computeAmountB, pendingFeesForPosition, simulateDetailed } from './math';
 import {
+  ASSOCIATED_TOKEN_PROGRAM_ID,
+  TOKEN_PROGRAM_ID,
   accountDisc,
   claimFeesIx,
   deriveAta,
@@ -42,6 +45,50 @@ import type {
   SwapParams,
   SwapResult,
 } from './types';
+
+// ─── wSOL helpers ─────────────────────────────────────────────────────────────
+
+const WSOL_MINT = new PublicKey('So11111111111111111111111111111111111111112');
+
+/** createAssociatedTokenAccountIdempotent — no-op if ATA already exists. */
+function createAtaIdempotentIx(
+  payer: PublicKey, ata: PublicKey, owner: PublicKey, mint: PublicKey,
+): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: ASSOCIATED_TOKEN_PROGRAM_ID,
+    keys: [
+      { pubkey: payer,           isSigner: true,  isWritable: true  },
+      { pubkey: ata,             isSigner: false, isWritable: true  },
+      { pubkey: owner,           isSigner: false, isWritable: false },
+      { pubkey: mint,            isSigner: false, isWritable: false },
+      { pubkey: SystemProgram.programId, isSigner: false, isWritable: false },
+      { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+    ],
+    data: Buffer.from([1]),  // 1 = CreateIdempotent
+  });
+}
+
+/** syncNative (SPL Token ix 17) — credit deposited lamports as token balance. */
+function syncNativeIx(wsolAta: PublicKey): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: TOKEN_PROGRAM_ID,
+    keys: [{ pubkey: wsolAta, isSigner: false, isWritable: true }],
+    data: Buffer.from([17]),
+  });
+}
+
+/** closeAccount (SPL Token ix 9) — burn wSOL ATA and return lamports as native SOL. */
+function closeAccountIx(account: PublicKey, destination: PublicKey, owner: PublicKey): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: TOKEN_PROGRAM_ID,
+    keys: [
+      { pubkey: account,     isSigner: false, isWritable: true  },
+      { pubkey: destination, isSigner: false, isWritable: true  },
+      { pubkey: owner,       isSigner: true,  isWritable: false },
+    ],
+    data: Buffer.from([9]),
+  });
+}
 
 // ─── Config ───────────────────────────────────────────────────────────────────
 
@@ -276,7 +323,7 @@ export class A2ASwapClient {
     const treasury      = deriveTreasury(this.programId);
     const treasuryTokenIn = deriveAta(treasury, params.mintIn);
 
-    const ix = swapIx(
+    const swapInstruction = swapIx(
       this.programId,
       signer.publicKey,
       poolAddr,
@@ -291,7 +338,29 @@ export class A2ASwapClient {
       minAmountOut,
       aToB,
     );
-    const sig = await this.signAndSend([ix], signer, []);
+
+    const instructions: TransactionInstruction[] = [];
+
+    // If tokenIn is SOL: wrap native SOL → wSOL ATA before the swap.
+    if (params.mintIn.equals(WSOL_MINT)) {
+      instructions.push(createAtaIdempotentIx(signer.publicKey, agentTokenIn, signer.publicKey, WSOL_MINT));
+      instructions.push(SystemProgram.transfer({ fromPubkey: signer.publicKey, toPubkey: agentTokenIn, lamports: params.amountIn }));
+      instructions.push(syncNativeIx(agentTokenIn));
+    }
+
+    // If tokenOut is SOL: ensure the wSOL output ATA exists before the swap.
+    if (params.mintOut.equals(WSOL_MINT)) {
+      instructions.push(createAtaIdempotentIx(signer.publicKey, agentTokenOut, signer.publicKey, WSOL_MINT));
+    }
+
+    instructions.push(swapInstruction);
+
+    // If tokenOut is SOL: close the wSOL ATA and return lamports as native SOL.
+    if (params.mintOut.equals(WSOL_MINT)) {
+      instructions.push(closeAccountIx(agentTokenOut, signer.publicKey, signer.publicKey));
+    }
+
+    const sig = await this.signAndSend(instructions, signer, []);
 
     return {
       signature:    sig,

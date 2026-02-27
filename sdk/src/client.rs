@@ -11,7 +11,7 @@ use solana_client::{
 use solana_sdk::{
     commitment_config::CommitmentConfig,
     hash::hash,
-    instruction::Instruction,
+    instruction::{AccountMeta, Instruction},
     pubkey::Pubkey,
     signature::{Keypair, Signature, Signer},
     transaction::Transaction,
@@ -20,8 +20,8 @@ use solana_sdk::{
 use crate::{
     error::{Error, Result},
     instructions::{
-        derive_ata, derive_pool, derive_pool_authority, derive_position, derive_treasury,
-        initialize_pool_ix, provide_liquidity_ix, swap_ix,
+        ata_program_id, derive_ata, derive_pool, derive_pool_authority, derive_position,
+        derive_treasury, initialize_pool_ix, provide_liquidity_ix, spl_token_id, swap_ix,
     },
     math::{pending_fees_for_position, simulate_detailed},
     state::{parse_pool, parse_position, parse_token_amount, PoolState, PositionState},
@@ -30,6 +30,62 @@ use crate::{
         ProvideResult, SimulateParams, SimulateResult, SwapParams, SwapResult,
     },
 };
+
+// ─── wSOL helpers ─────────────────────────────────────────────────────────────
+
+const WSOL_MINT: &str = "So11111111111111111111111111111111111111112";
+
+/// createAssociatedTokenAccountIdempotent — no-op if ATA already exists.
+fn create_ata_idempotent_ix(payer: &Pubkey, ata: &Pubkey, owner: &Pubkey, mint: &Pubkey) -> Instruction {
+    Instruction {
+        program_id: ata_program_id(),
+        accounts: vec![
+            AccountMeta::new(*payer, true),
+            AccountMeta::new(*ata, false),
+            AccountMeta::new_readonly(*owner, false),
+            AccountMeta::new_readonly(*mint, false),
+            AccountMeta::new_readonly(Pubkey::default(), false),  // system program
+            AccountMeta::new_readonly(spl_token_id(), false),
+        ],
+        data: vec![1],  // 1 = CreateIdempotent
+    }
+}
+
+/// syncNative (SPL Token ix 17) — credit deposited lamports as token balance.
+fn sync_native_ix(wsol_ata: &Pubkey) -> Instruction {
+    Instruction {
+        program_id: spl_token_id(),
+        accounts: vec![AccountMeta::new(*wsol_ata, false)],
+        data: vec![17],
+    }
+}
+
+/// closeAccount (SPL Token ix 9) — burn wSOL ATA and return lamports as native SOL.
+fn close_account_ix(account: &Pubkey, destination: &Pubkey, owner: &Pubkey) -> Instruction {
+    Instruction {
+        program_id: spl_token_id(),
+        accounts: vec![
+            AccountMeta::new(*account, false),
+            AccountMeta::new(*destination, false),
+            AccountMeta::new_readonly(*owner, true),
+        ],
+        data: vec![9],
+    }
+}
+
+/// SystemProgram.transfer — move lamports from wallet into wSOL ATA.
+fn system_transfer_ix(from: &Pubkey, to: &Pubkey, lamports: u64) -> Instruction {
+    let mut data = vec![2u8, 0, 0, 0];  // Transfer instruction index (u32 LE)
+    data.extend_from_slice(&lamports.to_le_bytes());
+    Instruction {
+        program_id: Pubkey::default(),  // system program
+        accounts: vec![
+            AccountMeta::new(*from, true),
+            AccountMeta::new(*to, false),
+        ],
+        data,
+    }
+}
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -240,7 +296,7 @@ impl A2ASwapClient {
         let (treasury, _)   = derive_treasury(&self.program_id);
         let treasury_token_in = derive_ata(&treasury, &params.mint_in);
 
-        let ix = swap_ix(
+        let swap_instruction = swap_ix(
             &self.program_id,
             &payer.pubkey(),
             &pool_addr,
@@ -255,7 +311,30 @@ impl A2ASwapClient {
             min_amount_out,
             a_to_b,
         );
-        let sig = self.sign_and_send(&rpc, &[ix], payer, &[]).await?;
+
+        let wsol_mint = Pubkey::from_str(WSOL_MINT).unwrap();
+        let mut instructions: Vec<Instruction> = Vec::new();
+
+        // If mint_in is SOL: wrap native SOL → wSOL ATA before the swap.
+        if params.mint_in == wsol_mint {
+            instructions.push(create_ata_idempotent_ix(&payer.pubkey(), &agent_token_in, &payer.pubkey(), &wsol_mint));
+            instructions.push(system_transfer_ix(&payer.pubkey(), &agent_token_in, params.amount_in));
+            instructions.push(sync_native_ix(&agent_token_in));
+        }
+
+        // If mint_out is SOL: ensure the wSOL output ATA exists before the swap.
+        if params.mint_out == wsol_mint {
+            instructions.push(create_ata_idempotent_ix(&payer.pubkey(), &agent_token_out, &payer.pubkey(), &wsol_mint));
+        }
+
+        instructions.push(swap_instruction);
+
+        // If mint_out is SOL: close the wSOL ATA and return lamports as native SOL.
+        if params.mint_out == wsol_mint {
+            instructions.push(close_account_ix(&agent_token_out, &payer.pubkey(), &payer.pubkey()));
+        }
+
+        let sig = self.sign_and_send(&rpc, &instructions, payer, &[]).await?;
 
         Ok(SwapResult {
             signature:      sig.to_string(),

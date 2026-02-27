@@ -1,6 +1,6 @@
 [package]
 name        = "a2a-swap-sdk"
-version     = "0.1.1"
+version     = "0.1.2"
 edition     = "2021"
 description = "A2A-Swap Rust SDK — agent-native constant-product AMM client for Solana"
 license     = "MIT"
