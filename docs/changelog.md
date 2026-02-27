@@ -4,6 +4,16 @@
 
 ## 2026-02-26
 
+### Pools — Agent LP Micro-Pool Program launch
+- New: SOL/$ELIZAOS pool live — `GkNGBQjStmY7LUFe7w6RrRSYBEqeicDMEmwE2c4eQy8q`
+  - Fee: 25 bps (0.25%), auto-compound enabled, seeded ~$27.48 TVL
+  - Create tx: `cvZ8RKt53mz9XjwsjfZTEa3PtKpfDUGZetK4HKbnK4HuKDYaxCdeoFJnWvAyMqTsmoR1VisgTqpNqhRT32vcGv6`
+  - Seed tx: `5sdqh2dvZrVhf18VNFZMLxQVamj4mYK9HLsHC3B5UBapx4pK67MeJvtPYfDumJZAbHuguWvLdMuWHsR7W22p6WkW`
+- New: SOL/$MOLTID pool live — `4Ri8qHrBzT8GB2Yys61La1u9fsweSU8notb6YE6gSZwR`
+  - Fee: 25 bps (0.25%), auto-compound enabled, seeded ~$27.48 TVL
+  - Create tx: `2cGQNP4pMqzGYTDqYZzNwFFSPEFtEFtUF2fMRkUS3STKsTSCNg6ubQo3WT97zDjJyrvK6czwH9rxBtfrxDTJyaHn`
+  - Seed tx: `39smHTnpr1Bj7UbYb6FCqQymWJHrtz48dBy9EE2Stv3HUKx8n4NZMHKLiZmzEhMCrxoBjzGD7kLcEZgjnyn69JZr`
+
 ### Program — Security patch (upgrade required)
 - **Fix (HIGH):** `claim_fees` — when `auto_compound = true` and pool reserves were zero, `fees_owed` was silently zeroed with no transfer or LP credit, permanently destroying accumulated fees. The handler now falls back to a direct fee transfer when `new_lp == 0`.
 - **Fix (HIGH):** `swap` / `approve_and_execute` — `agent_token_in` and `agent_token_out` were only validated for owner; mint membership in the pool was not checked. Explicit `MintMismatch` constraints now enforce both mints belong to the pool and are distinct.

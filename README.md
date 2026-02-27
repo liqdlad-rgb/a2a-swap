@@ -62,6 +62,19 @@ a2a-swap-sdk = "0.1"
 
 ---
 
+## Active Pools
+
+| Pair | Pool Address | Fee | TVL |
+|------|-------------|-----|-----|
+| SOL / USDC | [`BtBL5wpMbmabFimeUmLtjZAAeh4xWWf76NSpefMXb4TC`](https://solscan.io/account/BtBL5wpMbmabFimeUmLtjZAAeh4xWWf76NSpefMXb4TC) | 30 bps | — |
+| SOL / ELIZAOS | [`GkNGBQjStmY7LUFe7w6RrRSYBEqeicDMEmwE2c4eQy8q`](https://solscan.io/account/GkNGBQjStmY7LUFe7w6RrRSYBEqeicDMEmwE2c4eQy8q) | 25 bps | — |
+| SOL / MOLTID | [`4Ri8qHrBzT8GB2Yys61La1u9fsweSU8notb6YE6gSZwR`](https://solscan.io/account/4Ri8qHrBzT8GB2Yys61La1u9fsweSU8notb6YE6gSZwR) | 25 bps | — |
+
+All pools use the constant-product x·y=k formula with PDA-controlled vaults.
+To interact with any pool: `a2a-swap pool-info --pair <TOKEN_A>-<TOKEN_B>`
+
+---
+
 ## Quick start
 
 ```bash
