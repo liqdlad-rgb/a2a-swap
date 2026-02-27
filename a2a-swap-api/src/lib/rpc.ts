@@ -42,6 +42,30 @@ export async function getLatestBlockhash(url: string): Promise<string> {
   return result.value.blockhash;
 }
 
+/** getProgramAccounts filtered by data size only (no memcmp) — returns all accounts of that size. */
+export async function getProgramAccountsBySize(
+  url:       string,
+  programId: string,
+  dataSize:  number,
+): Promise<Array<{ pubkey: string; data: Uint8Array }>> {
+  const result = await rpcPost(url, {
+    jsonrpc: '2.0', id: 1,
+    method: 'getProgramAccounts',
+    params: [
+      programId,
+      {
+        encoding: 'base64',
+        filters: [{ dataSize }],
+      },
+    ],
+  }) as Array<{ pubkey: string; account: { data: [string, string] } }>;
+
+  return result.map(item => ({
+    pubkey: item.pubkey,
+    data:   Uint8Array.from(atob(item.account.data[0]), c => c.charCodeAt(0)),
+  }));
+}
+
 /**
  * getProgramAccounts filtered by data size + one memcmp.
  * Returns [ { pubkey, data } ].

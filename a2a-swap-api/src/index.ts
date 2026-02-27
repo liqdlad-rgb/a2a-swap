@@ -19,10 +19,11 @@ import { Hono }  from 'hono';
 import { cors }  from 'hono/cors';
 import type { AppEnv } from './env.js';
 import { x402 }        from './middleware/x402.js';
-import simulateRouter  from './routes/simulate.js';
-import convertRouter   from './routes/convert.js';
-import poolInfoRouter  from './routes/poolInfo.js';
-import positionsRouter from './routes/positions.js';
+import simulateRouter    from './routes/simulate.js';
+import convertRouter     from './routes/convert.js';
+import poolInfoRouter    from './routes/poolInfo.js';
+import positionsRouter   from './routes/positions.js';
+import activePoolsRouter from './routes/activePools.js';
 import { VERSION }     from './lib/constants.js';
 
 const app = new Hono<AppEnv>();
@@ -46,6 +47,7 @@ app.get('/', (c) => c.json({
     { method: 'POST', path: '/simulate',       auth: 'free', description: 'Swap quote — amount-out, fees, price impact' },
     { method: 'POST', path: '/convert',        auth: 'x402 (0.001 USDC)', description: 'Build unsigned swap transaction' },
     { method: 'GET',  path: '/pool-info',      auth: 'free', description: 'Pool reserves, LP supply, fee rate' },
+    { method: 'GET',  path: '/active-pools',   auth: 'free', description: 'All pools with reserves and fee rates' },
     { method: 'GET',  path: '/my-positions',   auth: 'free', description: 'LP positions for a wallet' },
     { method: 'GET',  path: '/my-fees',        auth: 'free', description: 'Pending + owed fees for a wallet' },
   ],
@@ -54,9 +56,10 @@ app.get('/', (c) => c.json({
 app.get('/health', (c) => c.json({ status: 'ok', version: VERSION }));
 
 // ── Free routes ───────────────────────────────────────────────────────────────
-app.route('/simulate',  simulateRouter);
-app.route('/pool-info', poolInfoRouter);
-app.route('/',          positionsRouter);   // handles /my-positions and /my-fees internally
+app.route('/simulate',      simulateRouter);
+app.route('/pool-info',     poolInfoRouter);
+app.route('/active-pools',  activePoolsRouter);
+app.route('/',              positionsRouter);   // handles /my-positions and /my-fees internally
 
 // ── x402-protected route ──────────────────────────────────────────────────────
 // x402 middleware runs first; only if payment is verified does the route handler run.

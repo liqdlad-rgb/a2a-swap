@@ -24,7 +24,8 @@ A stateless JSON API running on Cloudflare Workers (Hono) — call it from any l
 | `GET` | `/health` | free | Liveness check |
 | `POST` | `/simulate` | free | Quote a swap: amount-out, fees, price impact |
 | `POST` | `/convert` | **0.001 USDC (x402)** | Build a ready-to-sign swap transaction |
-| `GET` | `/pool-info` | free | Pool reserves, LP supply, fee rate |
+| `GET` | `/active-pools` | free | All pools with reserves, LP supply, and fee rate |
+| `GET` | `/pool-info` | free | Single pool reserves, LP supply, fee rate |
 | `GET` | `/my-positions` | free | All LP positions owned by a wallet |
 | `GET` | `/my-fees` | free | Claimable and pending fees per position |
 
@@ -238,6 +239,50 @@ tx.sign([keypair], recent_blockhash=tx.message.recent_blockhash)
 ```
 
 > **wSOL note:** if `tokenIn` is SOL, ensure your wSOL ATA is funded before submitting. The API does not wrap native SOL automatically.
+
+---
+
+## `GET /active-pools`
+
+List every pool deployed under this program — addresses, token mints, live reserves, LP supply, and fee rate. No query parameters required.
+
+> **Note:** Requires a Helius or private RPC on the server — the public mainnet endpoint disables `getProgramAccounts`. The hosted instance at `a2a-swap-api.a2a-swap.workers.dev` uses Helius and works out of the box.
+
+```bash
+curl https://a2a-swap-api.a2a-swap.workers.dev/active-pools
+```
+
+```json
+{
+  "count": 3,
+  "pools": [
+    {
+      "pool":           "BtBL5wpMbmabFimeUmLtjZAAeh4xWWf76NSpefMXb4TC",
+      "token_a_mint":   "So11111111111111111111111111111111111111112",
+      "token_a_symbol": "SOL",
+      "token_b_mint":   "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+      "token_b_symbol": "USDC",
+      "reserve_a":      "1007194643",
+      "reserve_b":      "76396454",
+      "lp_supply":      "277385786",
+      "fee_rate_bps":   30
+    },
+    {
+      "pool":           "GkNGBQjStmY7LUFe7w6RrRSYBEqeicDMEmwE2c4eQy8q",
+      "token_a_mint":   "So11111111111111111111111111111111111111112",
+      "token_a_symbol": "SOL",
+      "token_b_mint":   "ELiZaos...",
+      "token_b_symbol": null,
+      "reserve_a":      "...",
+      "reserve_b":      "...",
+      "lp_supply":      "...",
+      "fee_rate_bps":   25
+    }
+  ]
+}
+```
+
+`token_a_symbol` / `token_b_symbol` is `null` for mints not in the known-token list (SOL, USDC, USDT). Use `token_a_mint` / `token_b_mint` for the canonical mint address regardless.
 
 ---
 
