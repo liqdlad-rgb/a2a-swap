@@ -38,8 +38,12 @@ const MEMO_PROGRAM           = new PublicKey('MemoSq4gqABAXKb96qnH8TysNcWxMyWCqX
 
 // Pools to test
 const POOLS = [
-  { tokenIn: 'SOL', tokenOut: 'DuMbhu7mvQvqQHGcnikDgb4XegXJRyhUBfdU22uELiZA', label: 'SOL→ELIZAOS', amount: '1000000' },
-  { tokenIn: 'SOL', tokenOut: 'moLtguTf84g34S34PbnJDRKR1FXb5di1UCRsnB7hKjE',  label: 'SOL→MOLTID',  amount: '1000000' },
+  // SOL→token direction (default — agent receives exotic token for first time)
+  { tokenIn: 'SOL', tokenOut: 'DuMbhu7mvQvqQHGcnikDgb4XegXJRyhUBfdU22uELiZA', label: 'SOL→ELIZAOS', amount: '1000000'    },
+  { tokenIn: 'SOL', tokenOut: 'moLtguTf84g34S34PbnJDRKR1FXb5di1UCRsnB7hKjE',  label: 'SOL→MOLTID',  amount: '1000000'    },
+  // Reverse direction — uncomment to test token→SOL
+  // { tokenIn: 'DuMbhu7mvQvqQHGcnikDgb4XegXJRyhUBfdU22uELiZA', tokenOut: 'SOL', label: 'ELIZAOS→SOL', amount: '10000000000' },
+  // { tokenIn: 'moLtguTf84g34S34PbnJDRKR1FXb5di1UCRsnB7hKjE',  tokenOut: 'SOL', label: 'MOLTID→SOL',  amount: '5000000'    },
 ];
 const SWAPS_PER_POOL = 2;
 const PAUSE_MS = 10_000;
