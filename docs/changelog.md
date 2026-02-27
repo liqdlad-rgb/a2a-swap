@@ -2,6 +2,26 @@
 
 ---
 
+## 2026-02-27 (continued, part 5)
+
+### API `v0.3.0` — Agent DeFi API surface
+
+#### New endpoints
+- **`GET /capability-card`** — self-describing JSON for agent discovery: live pool count, all supported actions with params, fee structure, and integration list. One call tells an agent everything A2A-Swap can do.
+- **`GET /compare-quotes`** — A2A vs Jupiter side-by-side quote (`lite-api.jup.ag`, no auth required). Returns both quotes, `diff_pct`, and `better` field. Agent always chooses the route — no auto-fallback, no liquidity death spiral.
+- **`POST /swap`** — primary REST path for swap execution (x402 0.001 USDC). Identical to `/convert`; `/convert` kept as a backwards-compatible alias.
+
+#### Enhanced endpoints
+- **`GET /my-positions`** — adds `usd_value` per position and `total_usd_value` aggregate (DexScreener price API, free, no auth)
+- **`GET /my-fees`** — adds `usd_fees_earned` per position and `total_usd_fees` aggregate (DexScreener)
+
+#### Notes
+- Jupiter Quote API v6 (`quote-api.jup.ag`) blocks Cloudflare Workers IPs; using `lite-api.jup.ag/swap/v1/quote` instead (public, no key)
+- Jupiter Price API v2 (`api.jup.ag/price/v2`) now requires auth; using DexScreener (`api.dexscreener.com/tokens/v1/solana`) instead
+- VERSION bumped `0.2.0` → `0.3.0`
+
+---
+
 ## 2026-02-27 (continued, part 4)
 
 ### TypeScript SDK `v0.1.4` (`@liqdlad/a2a-swap-sdk`)
