@@ -2,6 +2,34 @@
 
 ---
 
+## 2026-02-27 (continued, part 2)
+
+### API — `GET /active-pools`
+- **New:** `GET /active-pools` endpoint — returns all pools deployed under the program with live reserves, LP supply, fee rate, and token symbols where known
+  - Uses `getProgramAccounts` filtered by Pool account size (212 bytes); requires Helius/private RPC
+  - `token_a_symbol` / `token_b_symbol` resolved from known-token list (SOL, USDC, USDT); `null` for unknown mints
+  - Enables agents to enumerate all swappable pairs on first boot with no hard-coded config
+
+### SDK `v0.1.3` (`@liqdlad/a2a-swap-sdk`)
+- **New:** `activePools()` method on `A2ASwapClient`
+  - Calls `getProgramAccounts` with Pool discriminator + dataSize 212 filter
+  - Batch-fetches all vault accounts via `getMultipleAccountsInfo` (single round-trip)
+  - Returns `PoolInfo[]` — same type as `poolInfo()`
+
+### MCP Server `v0.1.2` (`@liqdlad/mcp-a2a-swap`)
+- **New:** `active_pools` tool — no required inputs; lists all pools with reserves, spot price, and fee rate
+- Updated `@liqdlad/a2a-swap-sdk` dependency to `^0.1.3`
+
+### ElizaOS Plugin `v0.1.4` (`@liqdlad/plugin-a2a-swap`)
+- **New:** `A2A_ACTIVE_POOLS` action — 8 LLM-optimized similes; returns pool array in `data` field for downstream use
+- Updated `@liqdlad/a2a-swap-sdk` dependency to `^0.1.3`
+
+### CLI `v0.1.6` (`a2a-swap-cli`)
+- **New:** `active-pools` command — human-readable table output + `--json` flag
+  - Requires a private RPC endpoint (set `SOLANA_RPC_URL` or `--rpc`)
+
+---
+
 ## 2026-02-27 (continued)
 
 ### Protocol — Treasury ATAs for ELIZAOS and MOLTID
