@@ -2,6 +2,17 @@
 
 ---
 
+## 2026-02-27 (continued, part 3)
+
+### API — automatic SOL wrap/unwrap in `POST /convert`
+- **Fix:** `POST /convert` now embeds wSOL wrap/unwrap instructions directly in the returned transaction — agents no longer need a pre-funded wSOL ATA
+  - `tokenIn=SOL`: transaction prepends `createAssociatedTokenAccountIdempotent + SystemProgram.transfer + syncNative` before the swap instruction
+  - `tokenOut=SOL`: transaction prepends `createAssociatedTokenAccountIdempotent` for the output ATA and appends `closeAccount` (returns wSOL as native lamports) after the swap
+  - Response now includes `wrapped_sol: boolean` — `true` when any SOL wrap/unwrap instructions were embedded
+  - Removes the sharp edge that caused silent on-chain failures for agents swapping native SOL
+
+---
+
 ## 2026-02-27 (continued, part 2)
 
 ### API — `GET /active-pools`
