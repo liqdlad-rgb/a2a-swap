@@ -13,9 +13,12 @@
  *   simulation   object  — SimulateResult (amounts, fees, price impact)
  *   pool         string  — pool address
  *   min_out      string  — minimum output enforced by the instruction
+ *   wrapped_sol  boolean — true if SOL wrap/unwrap instructions were embedded
  *
- * The agent must sign the transaction with their wallet and submit it to an RPC node.
- * Important: wSOL accounts must be pre-funded. The API does not wrap/unwrap SOL.
+ * SOL is handled automatically:
+ *   tokenIn=SOL  → wrap instructions prepended (createATA + transfer + syncNative)
+ *   tokenOut=SOL → unwrap instruction appended (closeAccount → native SOL)
+ *   The agent does NOT need a pre-funded wSOL ATA.
  */
 
 import { Hono } from 'hono';
@@ -32,7 +35,67 @@ import {
 import {
   resolvePool, resolvePoolAuthority, resolveTreasury, resolveAta, instructionDisc,
 } from '../lib/pda.js';
-import { KNOWN_TOKENS, PROGRAM_ID, TOKEN_PROGRAM } from '../lib/constants.js';
+import { KNOWN_TOKENS, PROGRAM_ID, TOKEN_PROGRAM, ATA_PROGRAM } from '../lib/constants.js';
+
+const WSOL_MINT    = 'So11111111111111111111111111111111111111112';
+const SYSTEM_PROG  = '11111111111111111111111111111111';
+
+// ── wSOL helpers ──────────────────────────────────────────────────────────────
+
+/** createAssociatedTokenAccountIdempotent — no-op if ATA already exists. */
+function createAtaIdempotentIx(
+  payer: PublicKey, ata: PublicKey, owner: PublicKey, mint: PublicKey,
+): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: new PublicKey(ATA_PROGRAM),
+    keys: [
+      { pubkey: payer,                          isSigner: true,  isWritable: true  },
+      { pubkey: ata,                            isSigner: false, isWritable: true  },
+      { pubkey: owner,                          isSigner: false, isWritable: false },
+      { pubkey: mint,                           isSigner: false, isWritable: false },
+      { pubkey: new PublicKey(SYSTEM_PROG),     isSigner: false, isWritable: false },
+      { pubkey: new PublicKey(TOKEN_PROGRAM),   isSigner: false, isWritable: false },
+    ],
+    data: Buffer.from([1]),  // 1 = CreateIdempotent
+  });
+}
+
+/** SystemProgram.transfer — move lamports from wallet into wSOL ATA. */
+function systemTransferIx(from: PublicKey, to: PublicKey, lamports: bigint): TransactionInstruction {
+  const data = new Uint8Array(12);
+  data[0] = 2;  // Transfer instruction index (u32 LE)
+  writeU64LE(data, 4, lamports);
+  return new TransactionInstruction({
+    programId: new PublicKey(SYSTEM_PROG),
+    keys: [
+      { pubkey: from, isSigner: true,  isWritable: true },
+      { pubkey: to,   isSigner: false, isWritable: true },
+    ],
+    data: Buffer.from(data),
+  });
+}
+
+/** SPL Token syncNative (index 17) — credit the deposited lamports as token balance. */
+function syncNativeIx(wsolAta: PublicKey): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: new PublicKey(TOKEN_PROGRAM),
+    keys: [{ pubkey: wsolAta, isSigner: false, isWritable: true }],
+    data: Buffer.from([17]),
+  });
+}
+
+/** SPL Token closeAccount (index 9) — burn wSOL ATA and return lamports as native SOL. */
+function closeAccountIx(account: PublicKey, destination: PublicKey, owner: PublicKey): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: new PublicKey(TOKEN_PROGRAM),
+    keys: [
+      { pubkey: account,     isSigner: false, isWritable: true  },
+      { pubkey: destination, isSigner: false, isWritable: true  },
+      { pubkey: owner,       isSigner: true,  isWritable: false },
+    ],
+    data: Buffer.from([9]),
+  });
+}
 
 const router = new Hono<AppEnv>();
 
@@ -182,7 +245,30 @@ router.post('/', async (c) => {
     recentBlockhash: blockhash,
     feePayer:        agentPk,
   });
+
+  const wsolMintPk = new PublicKey(WSOL_MINT);
+  let wrappedSol = false;
+
+  // If tokenIn is SOL: create wSOL ATA (idempotent), wrap input lamports, sync.
+  if (mintIn === WSOL_MINT) {
+    tx.add(createAtaIdempotentIx(agentPk, agentInAta, agentPk, wsolMintPk));
+    tx.add(systemTransferIx(agentPk, agentInAta, amountIn));
+    tx.add(syncNativeIx(agentInAta));
+    wrappedSol = true;
+  }
+
+  // If tokenOut is SOL: ensure wSOL output ATA exists before the swap.
+  if (mintOut === WSOL_MINT) {
+    tx.add(createAtaIdempotentIx(agentPk, agentOutAta, agentPk, wsolMintPk));
+    wrappedSol = true;
+  }
+
   tx.add(swapIx);
+
+  // If tokenOut is SOL: close the wSOL ATA and return lamports as native SOL.
+  if (mintOut === WSOL_MINT) {
+    tx.add(closeAccountIx(agentOutAta, agentPk, agentPk));
+  }
 
   const txBytes = tx.serialize({ requireAllSignatures: false, verifySignatures: false });
   const txBase64 = Buffer.from(txBytes).toString('base64');
@@ -192,9 +278,7 @@ router.post('/', async (c) => {
     simulation:  serializeSimulate(simulation),
     pool:        poolAddr,
     min_out:     minAmountOut.toString(),
-    note: mintIn === 'So11111111111111111111111111111111111111112'
-      ? 'Input is wSOL — ensure your wSOL ATA is funded before submitting.'
-      : undefined,
+    wrapped_sol: wrappedSol,
   });
 });
 

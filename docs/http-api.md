@@ -186,10 +186,13 @@ curl -X POST https://a2a-swap-api.a2a-swap.workers.dev/convert \
     "price_impact_pct": 49.74,
     "fee_rate_bps":     30
   },
-  "pool":    "BtBL5wpMbmabFimeUmLtjZAAeh4xWWf76NSpefMXb4TC",
-  "min_out": "37050000"
+  "pool":        "BtBL5wpMbmabFimeUmLtjZAAeh4xWWf76NSpefMXb4TC",
+  "min_out":     "37050000",
+  "wrapped_sol": true
 }
 ```
+
+`wrapped_sol: true` means the transaction already includes SOL wrap/unwrap instructions — your agent does not need a pre-funded wSOL ATA. When `tokenIn` is `SOL`, the transaction prepends `createAssociatedTokenAccountIdempotent + SystemProgram.transfer + syncNative`. When `tokenOut` is `SOL`, the transaction appends `closeAccount` to return wSOL as native lamports.
 
 ### Submitting the transaction — TypeScript
 
@@ -238,7 +241,6 @@ tx.sign([keypair], recent_blockhash=tx.message.recent_blockhash)
 # submit via your preferred Solana Python client
 ```
 
-> **wSOL note:** if `tokenIn` is SOL, ensure your wSOL ATA is funded before submitting. The API does not wrap native SOL automatically.
 
 ---
 
