@@ -16,6 +16,106 @@ A stateless JSON API running on Cloudflare Workers (Hono) — call it from any l
 
 ---
 
+## Agent Quickstart
+
+Zero to first swap in five steps. No API key, no account creation — you just need a funded Solana wallet.
+
+### Step 1 — Generate a keypair
+
+Always generate the keypair locally. The private key must never touch a server.
+
+```typescript
+// TypeScript / Node.js
+import { Keypair } from '@solana/web3.js';
+import fs from 'fs';
+
+const agent = Keypair.generate();
+fs.writeFileSync('agent-key.json', JSON.stringify(Array.from(agent.secretKey)));
+console.log('Agent wallet:', agent.publicKey.toBase58());
+```
+
+```python
+# Python
+from solders.keypair import Keypair
+import json
+
+agent = Keypair()
+with open('agent-key.json', 'w') as f:
+    json.dump(list(bytes(agent)), f)
+print('Agent wallet:', agent.pubkey())
+```
+
+```bash
+# CLI (Solana tool suite)
+solana-keygen new --outfile ~/.config/solana/agent.json
+solana address --keypair ~/.config/solana/agent.json
+```
+
+### Step 2 — Fund the wallet
+
+Your agent needs two things:
+- **SOL** — for transaction fees (~0.001 SOL per swap) and rent
+- **USDC** — for x402 micropayments (0.001 USDC per `/convert` call) and/or as a swap token
+
+Fund from any exchange or another wallet. Mainnet USDC mint: `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`
+
+### Step 3 — Discover available pools
+
+```bash
+curl https://a2a-swap-api.a2a-swap.workers.dev/active-pools
+```
+
+Pick the pool you want — note the `token_a_mint`, `token_b_mint`, and current `reserve_a` / `reserve_b`.
+
+### Step 4 — Simulate the swap
+
+```bash
+curl -X POST https://a2a-swap-api.a2a-swap.workers.dev/simulate \
+     -H 'Content-Type: application/json' \
+     -d '{"tokenIn":"SOL","tokenOut":"USDC","amount":"100000000"}'
+```
+
+Check `price_impact_pct` and `estimated_out` before committing. If the impact is acceptable, proceed.
+
+### Step 5 — Execute the swap
+
+`POST /convert` requires an x402 micropayment. An x402-capable agent handles this automatically. For manual testing:
+
+```typescript
+import { Connection, Keypair, Transaction } from '@solana/web3.js';
+import fs from 'fs';
+
+const keypair = Keypair.fromSecretKey(
+  Uint8Array.from(JSON.parse(fs.readFileSync('agent-key.json', 'utf8')))
+);
+const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
+
+// 1. Request the swap transaction (attach X-Payment for x402)
+const resp = await fetch('https://a2a-swap-api.a2a-swap.workers.dev/convert', {
+  method:  'POST',
+  headers: { 'Content-Type': 'application/json', 'X-Payment': '<x402-payment-token>' },
+  body: JSON.stringify({
+    tokenIn:     'SOL',
+    tokenOut:    'USDC',
+    amount:      '100000000',   // 0.1 SOL in lamports
+    wallet:      keypair.publicKey.toBase58(),
+    slippageBps: 50,            // 0.5% max slippage
+  }),
+});
+
+const { transaction } = await resp.json();
+
+// 2. Decode, sign, and submit — private key never leaves this process
+const tx = Transaction.from(Buffer.from(transaction, 'base64'));
+tx.sign(keypair);
+const sig = await connection.sendRawTransaction(tx.serialize());
+console.log('Swap confirmed:', sig);
+```
+
+> **SOL swaps are handled automatically.** If `tokenIn` is `SOL`, the returned transaction already includes wrap instructions (`createATA + SystemProgram.transfer + syncNative`). If `tokenOut` is `SOL`, it appends `closeAccount` to return native lamports. No manual wSOL management needed.
+
+---
+
 ## Endpoints
 
 | Method | Path | Payment | Description |
