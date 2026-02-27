@@ -2,6 +2,17 @@
 
 ---
 
+## 2026-02-27 (continued)
+
+### Protocol — Treasury ATAs for ELIZAOS and MOLTID
+- Created treasury ELIZAOS ATA: `7L6KdisCWUK95JZdn7fBmqfH1VLKQ1DUPMJPpWmagSkM`
+  - Tx: `CWuuyRtr3Jq7mQQwmVT56bs5X4dh4B1i7ZZJAqwRoXwNhUZoFpDbZzbWs2pLMywYBXVpXa9TnPxc9sfaw2fUaKN`
+- Created treasury MOLTID ATA: `2Y3rsyAwKenaFAsAkb1qSbjSgta9mTsivYkrNQrvNS3w`
+  - Tx: `zshJUx5cxbTHG22Bjtg2T3mVZ5xMqd1J4dJzik42aiD2yNF32B48n9ubvwumYnb51URVM6L9mSpUrTvxhVYLnu2`
+- Both owned by treasury PDA `86DVDaesLXgygWWodtmR7mzdoJ193cWLBUegEZiDKPTd`; protocol fees from ELIZAOS→SOL and MOLTID→SOL swaps now route correctly
+
+---
+
 ## 2026-02-27
 
 ### API — TypeScript/Hono rewrite + x402 micropayments
