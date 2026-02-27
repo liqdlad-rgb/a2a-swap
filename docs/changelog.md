@@ -2,6 +2,21 @@
 
 ---
 
+## 2026-02-27 (continued, part 4)
+
+### TypeScript SDK `v0.1.4` (`@liqdlad/a2a-swap-sdk`)
+- **Fix:** `convert()` now embeds wSOL wrap/unwrap instructions directly — agents no longer need a pre-funded wSOL ATA
+  - `mintIn=wSOL`: prepends `createAssociatedTokenAccountIdempotent + SystemProgram.transfer + syncNative`
+  - `mintOut=wSOL`: prepends `createAssociatedTokenAccountIdempotent`, appends `closeAccount`
+
+### Rust SDK `v0.1.2` (`a2a-swap-sdk`)
+- **Fix:** `convert()` same automatic SOL wrap/unwrap as TypeScript SDK
+
+### CLI `v0.1.7` (`a2a-swap-cli`)
+- **Fix:** `convert` command same automatic SOL wrap/unwrap; no manual `spl-token sync-native` step required
+
+---
+
 ## 2026-02-27 (continued, part 3)
 
 ### API — automatic SOL wrap/unwrap in `POST /convert`
