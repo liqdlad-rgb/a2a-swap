@@ -1,16 +1,19 @@
-name               = "a2a-swap-api"
-main               = "build/worker/shim.mjs"
-compatibility_date = "2026-02-24"
-
-[build]
-command = "cargo install -q worker-build && worker-build --release"
+name                   = "a2a-swap-api"
+main                   = "src/index.ts"
+compatibility_date     = "2026-02-24"
+compatibility_flags    = ["nodejs_compat"]
 
 # ── Environment variables ─────────────────────────────────────────────────────
-# After deploying, replace <your-account> with your Cloudflare account subdomain
-# (shown in the wrangler deploy output), then run `wrangler deploy` once more.
-[vars]
-API_URL = "https://a2a-swap-api.a2a-swap.workers.dev"
-
-# SOLANA_RPC_URL is omitted here — the worker falls back to the public mainnet
-# RPC automatically.  For production traffic, set a private endpoint instead:
+# API_URL: Set to your live Workers URL after the first deploy.
+# SOLANA_RPC_URL: Override the default public mainnet RPC.
 #   wrangler secret put SOLANA_RPC_URL
+# X402_FEE_PAYER: Solana address of the facilitator's fee payer.
+#   Run `curl https://facilitator.payai.network/supported` once,
+#   grab the feePayer from the exact/solana kind, then:
+#   wrangler secret put X402_FEE_PAYER
+
+[vars]
+API_URL              = "https://a2a-swap-api.a2a-swap.workers.dev"
+X402_FACILITATOR_URL = "https://facilitator.payai.network"
+X402_TREASURY_ATA    = "hPYQVAGYv6Dmm8unZTXGN9pGwtuDm2PWSre4Cx1GnCS"
+X402_CONVERT_AMOUNT  = "1000"

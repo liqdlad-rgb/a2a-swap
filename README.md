@@ -487,49 +487,74 @@ await sendAndConfirmTransaction(conn, tx, [agentKeypair, approverKeypair]);
 
 ### HTTP API (no SDK, no install)
 
-A stateless Cloudflare Workers JSON API — call it with any HTTP client, from any language, with no SDK installed.
+A stateless Cloudflare Workers JSON API (Hono) — call it with any HTTP client, from any language, no SDK required.
 
 **Live endpoint:** `https://a2a-swap-api.a2a-swap.workers.dev`
 
 ```bash
 export BASE=https://a2a-swap-api.a2a-swap.workers.dev
 
-# Service info
-curl "$BASE/"
+# Liveness check
+curl "$BASE/health"
 
-# Simulate a swap
+# Free: quote a swap (amounts in raw atomic units)
 curl -X POST "$BASE/simulate" \
      -H 'Content-Type: application/json' \
-     -d '{"in":"SOL","out":"USDC","amount":1000000000}'
+     -d '{"tokenIn":"SOL","tokenOut":"USDC","amount":"1000000000"}'
 
-# Build a swap instruction (agent signs + submits)
+# x402 paid (0.001 USDC): build an unsigned swap transaction
+# Without X-Payment header → 402 with payment requirements
 curl -X POST "$BASE/convert" \
      -H 'Content-Type: application/json' \
-     -d '{"in":"SOL","out":"USDC","amount":1000000000,"agent":"<WALLET_PUBKEY>"}'
+     -H "X-Payment: $(x402-pay --network solana-mainnet --resource $BASE/convert)" \
+     -d '{"tokenIn":"SOL","tokenOut":"USDC","amount":"1000000000","wallet":"<WALLET_PUBKEY>"}'
 
-# Pool reserves, spot price, LP supply
-curl "$BASE/pool-info?pair=SOL-USDC"
+# Free: pool reserves and fee rate
+curl "$BASE/pool-info?tokenA=SOL&tokenB=USDC"
 
-# LP positions for a wallet
-curl "$BASE/my-positions?pubkey=<WALLET_PUBKEY>"
+# Free: LP positions for a wallet
+curl "$BASE/my-positions?wallet=<WALLET_PUBKEY>"
 
-# Claimable + pending fees
-curl "$BASE/my-fees?pubkey=<WALLET_PUBKEY>"
+# Free: pending + owed fees per position
+curl "$BASE/my-fees?wallet=<WALLET_PUBKEY>"
 ```
 
-| Endpoint | Method | Auth | Description |
-|----------|--------|------|-------------|
-| `/` | GET | — | Service info + endpoint listing |
-| `/health` | GET | — | Liveness check |
-| `/simulate` | POST | — | Quote a swap: amount-out, price-impact, fee |
-| `/convert` | POST | — | Build a ready-to-sign swap instruction |
-| `/pool-info` | GET | — | On-chain reserves, spot prices, LP supply |
-| `/my-positions` | GET | — | All LP positions owned by a wallet |
-| `/my-fees` | GET | — | Claimable + pending fees per position |
+| Endpoint | Method | Payment | Description |
+|----------|--------|---------|-------------|
+| `/health` | GET | free | Liveness check |
+| `/simulate` | POST | free | Quote: amount-out, price-impact, fee breakdown |
+| `/convert` | POST | **0.001 USDC** (x402) | Build unsigned swap transaction |
+| `/pool-info` | GET | free | Reserves, LP supply, fee rate |
+| `/my-positions` | GET | free | All LP positions for a wallet |
+| `/my-fees` | GET | free | Claimable + pending fees per position |
 
-`POST /convert` returns a `programId`, `accounts`, and base64-encoded `data` — the agent signs and submits the transaction itself.
+#### x402 micropayments — how agents pay for `/convert`
 
-**Self-host:** deploy your own instance from [`a2a-swap-api/`](./a2a-swap-api/) with `wrangler deploy`.
+`POST /convert` is protected by the [x402 protocol](https://x402.org). Without a valid `X-Payment` header the server returns `HTTP 402` with payment requirements:
+
+```json
+{
+  "x402Version": 2,
+  "accepts": [{
+    "scheme": "exact",
+    "network": "solana-mainnet",
+    "maxAmountRequired": "1000",
+    "asset": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "payTo": "hPYQVAGYv6Dmm8unZTXGN9pGwtuDm2PWSre4Cx1GnCS",
+    "description": "Per-swap fee (0.001 USDC)"
+  }]
+}
+```
+
+An x402-compatible agent:
+1. Detects the 402 and reads the `accepts` object.
+2. Pays 0.001 USDC to the treasury ATA via a Solana transaction.
+3. Re-sends the request with `X-Payment: <base64(paymentJSON)>`.
+4. Receives a base64-encoded unsigned `Transaction` — signs it with their wallet and submits to any RPC node.
+
+The treasury receives the USDC; the facilitator (`facilitator.payai.network`) verifies + settles on-chain.
+
+**Self-host:** deploy your own instance from [`a2a-swap-api/`](./a2a-swap-api/) with `wrangler deploy`. Set `SOLANA_RPC_URL` via `wrangler secret put` for a reliable RPC endpoint.
 
 ---
 

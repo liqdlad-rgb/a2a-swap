@@ -2,6 +2,20 @@
 
 ---
 
+## 2026-02-27
+
+### API — TypeScript/Hono rewrite + x402 micropayments
+- **New:** `a2a-swap-api/` fully rewritten from Rust/WASM to TypeScript/Hono (Cloudflare Workers)
+  - Endpoints: `POST /simulate` (free), `POST /convert` (x402), `GET /pool-info`, `GET /my-positions`, `GET /my-fees`, `GET /health`
+  - `POST /convert` is now protected by [x402](https://x402.org) v2 — agents pay 0.001 USDC per call
+  - Payment goes to treasury USDC ATA (`hPYQVAGYv6Dmm8unZTXGN9pGwtuDm2PWSre4Cx1GnCS`) via `facilitator.payai.network`
+  - `/convert` returns a base64-encoded unsigned Solana `Transaction`; agent signs + submits independently
+  - All BigInt arithmetic mirrors on-chain Rust exactly; zero float loss
+- **New:** `src/middleware/x402.ts` — pure-fetch x402 v2 middleware (no x402-solana dep); CF Workers compatible
+- **New:** `src/lib/{constants,pda,rpc,math}.ts` — typed ports of Rust SDK state parsers + simulation math
+
+---
+
 ## 2026-02-26
 
 ### Pools — Agent LP Micro-Pool Program launch
