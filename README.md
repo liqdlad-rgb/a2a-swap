@@ -494,8 +494,8 @@ A stateless Cloudflare Workers JSON API (Hono) — call it with any HTTP client,
 ```bash
 export BASE=https://a2a-swap-api.a2a-swap.workers.dev
 
-# Liveness check
-curl "$BASE/health"
+# API index — endpoints, version, program ID
+curl "$BASE/"
 
 # Free: quote a swap (amounts in raw atomic units)
 curl -X POST "$BASE/simulate" \
@@ -521,6 +521,7 @@ curl "$BASE/my-fees?wallet=<WALLET_PUBKEY>"
 
 | Endpoint | Method | Payment | Description |
 |----------|--------|---------|-------------|
+| `/` | GET | free | API index — endpoint listing, version, program ID |
 | `/health` | GET | free | Liveness check |
 | `/simulate` | POST | free | Quote: amount-out, price-impact, fee breakdown |
 | `/convert` | POST | **0.001 USDC** (x402) | Build unsigned swap transaction |

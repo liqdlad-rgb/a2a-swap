@@ -35,7 +35,22 @@ app.use('*', cors({
   exposeHeaders:  ['X-Payment-Response'],
 }));
 
-// ── Health ────────────────────────────────────────────────────────────────────
+// ── Index + Health ────────────────────────────────────────────────────────────
+app.get('/', (c) => c.json({
+  name:    'a2a-swap-api',
+  version: VERSION,
+  program: '8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq',
+  docs:    'https://github.com/liqdlad-rgb/a2a-swap',
+  endpoints: [
+    { method: 'GET',  path: '/health',        auth: 'free', description: 'Liveness check' },
+    { method: 'POST', path: '/simulate',       auth: 'free', description: 'Swap quote — amount-out, fees, price impact' },
+    { method: 'POST', path: '/convert',        auth: 'x402 (0.001 USDC)', description: 'Build unsigned swap transaction' },
+    { method: 'GET',  path: '/pool-info',      auth: 'free', description: 'Pool reserves, LP supply, fee rate' },
+    { method: 'GET',  path: '/my-positions',   auth: 'free', description: 'LP positions for a wallet' },
+    { method: 'GET',  path: '/my-fees',        auth: 'free', description: 'Pending + owed fees for a wallet' },
+  ],
+}));
+
 app.get('/health', (c) => c.json({ status: 'ok', version: VERSION }));
 
 // ── Free routes ───────────────────────────────────────────────────────────────
