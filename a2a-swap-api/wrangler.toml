@@ -16,4 +16,6 @@ compatibility_flags    = ["nodejs_compat"]
 API_URL              = "https://a2a-swap-api.a2a-swap.workers.dev"
 X402_FACILITATOR_URL = "https://facilitator.payai.network"
 X402_TREASURY_ATA    = "hPYQVAGYv6Dmm8unZTXGN9pGwtuDm2PWSre4Cx1GnCS"
+# Owner of the treasury USDC ATA above (the treasury PDA); used as paymentRequirements.payTo
+X402_TREASURY_OWNER  = "86DVDaesLXgygWWodtmR7mzdoJ193cWLBUegEZiDKPTd"
 X402_CONVERT_AMOUNT  = "1000"

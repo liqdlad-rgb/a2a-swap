@@ -204,13 +204,15 @@ router.post('/', async (c) => {
   const minAmountOut = (simulation.estimatedOut * BigInt(10_000 - slippageBps)) / 10_000n;
 
   // ── Build swap instruction ──────────────────────────────────────────────────
-  // Instruction data: disc(8) + a_to_b(1) + amount_in(8 LE) + min_amount_out(8 LE) = 25 bytes
+  // Instruction data: disc(8) + amount_in(8 LE) + min_amount_out(8 LE) + a_to_b(1) = 25 bytes
+  // Parameter order must match the Anchor handler signature:
+  //   handler(ctx, amount_in: u64, min_amount_out: u64, a_to_b: bool)
   const disc = await instructionDisc('swap');
   const data = new Uint8Array(25);
   data.set(disc, 0);
-  data[8] = aToB ? 1 : 0;
-  writeU64LE(data, 9,  amountIn);
-  writeU64LE(data, 17, minAmountOut);
+  writeU64LE(data, 8,  amountIn);
+  writeU64LE(data, 16, minAmountOut);
+  data[24] = aToB ? 1 : 0;
 
   const poolPk      = new PublicKey(poolAddr);
   const poolAuth    = resolvePoolAuthority(poolPk);
@@ -219,20 +221,24 @@ router.post('/', async (c) => {
   const mintInPk    = new PublicKey(mintIn);
   const mintOutPk   = new PublicKey(mintOut);  // unused as AccountMeta but needed for ATA derivation
 
-  const agentInAta     = resolveAta(agentPk, mintInPk);
-  const agentOutAta    = resolveAta(agentPk, mintOutPk);
-  const treasuryInAta  = resolveAta(treasury, mintInPk);
+  const agentInAta    = resolveAta(agentPk, mintInPk);
+  const agentOutAta   = resolveAta(agentPk, mintOutPk);
+  const treasuryInAta = resolveAta(treasury, mintInPk);
 
+  // Account order must match the on-chain Swap struct exactly (10 accounts):
+  //   agent, pool, pool_authority, token_a_vault, token_b_vault,
+  //   agent_token_in, agent_token_out, treasury, treasury_token_in, token_program
   const keys: AccountMeta[] = [
-    { pubkey: agentPk,                      isSigner: true,  isWritable: true  },
-    { pubkey: poolPk,                       isSigner: false, isWritable: true  },
-    { pubkey: poolAuth,                     isSigner: false, isWritable: false },
-    { pubkey: agentInAta,                   isSigner: false, isWritable: true  },
-    { pubkey: agentOutAta,                  isSigner: false, isWritable: true  },
-    { pubkey: new PublicKey(vaultInAddr),   isSigner: false, isWritable: true  },
-    { pubkey: new PublicKey(vaultOutAddr),  isSigner: false, isWritable: true  },
-    { pubkey: treasuryInAta,               isSigner: false, isWritable: true  },
-    { pubkey: new PublicKey(TOKEN_PROGRAM), isSigner: false, isWritable: false },
+    { pubkey: agentPk,                          isSigner: true,  isWritable: true  },
+    { pubkey: poolPk,                           isSigner: false, isWritable: true  },
+    { pubkey: poolAuth,                         isSigner: false, isWritable: false },
+    { pubkey: new PublicKey(pool.tokenAVault),  isSigner: false, isWritable: true  },
+    { pubkey: new PublicKey(pool.tokenBVault),  isSigner: false, isWritable: true  },
+    { pubkey: agentInAta,                       isSigner: false, isWritable: true  },
+    { pubkey: agentOutAta,                      isSigner: false, isWritable: true  },
+    { pubkey: treasury,                         isSigner: false, isWritable: false },
+    { pubkey: treasuryInAta,                    isSigner: false, isWritable: true  },
+    { pubkey: new PublicKey(TOKEN_PROGRAM),     isSigner: false, isWritable: false },
   ];
 
   const swapIx = new TransactionInstruction({

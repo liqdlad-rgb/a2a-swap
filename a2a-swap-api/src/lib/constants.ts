@@ -36,6 +36,10 @@ export const POSITION = {
   TOTAL:                   138,
 };
 
+// x402 Solana network identifier (CAIP-2) and facilitator fee payer (from /supported).
+export const X402_SOLANA_NETWORK = 'solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp';
+export const X402_FEE_PAYER_ADDR = '2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4';
+
 // Fee constants — must match programs/a2a-swap/src/constants.rs
 export const PROTOCOL_FEE_BPS  = 20n;
 export const PROTOCOL_FEE_DENOM = 100_000n;

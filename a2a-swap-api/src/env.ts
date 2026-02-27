@@ -7,8 +7,10 @@ export interface AppEnv {
     SOLANA_RPC_URL?:      string;
     /** Base URL of the x402 facilitator (e.g. https://facilitator.payai.network). */
     X402_FACILITATOR_URL: string;
-    /** Treasury USDC ATA that receives /convert fees. */
+    /** Treasury USDC ATA that receives /convert fees (transfer destination). */
     X402_TREASURY_ATA:    string;
+    /** Owner wallet of the treasury USDC ATA; used as paymentRequirements.payTo. */
+    X402_TREASURY_OWNER:  string;
     /** Amount in USDC atomic units (6 decimals) charged per /convert call. */
     X402_CONVERT_AMOUNT:  string;
     /** Solana address of the facilitator fee-payer (optional; fetched from /supported if absent). */

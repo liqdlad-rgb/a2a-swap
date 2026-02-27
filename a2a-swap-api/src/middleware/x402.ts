@@ -3,55 +3,67 @@
  *
  * Flow:
  *   1. Agent sends request — no X-Payment header → 402 with payment requirements.
- *   2. Agent pays via x402 client, re-sends request with X-Payment header.
- *   3. Middleware decodes header, calls facilitator /verify.
+ *   2. Agent builds a signed Solana v0 VersionedTransaction (USDC TransferChecked),
+ *      wraps it in a PaymentPayload JSON, base64-encodes it, and re-sends with
+ *      the X-Payment header.
+ *   3. Middleware decodes the header, calls facilitator /verify.
  *   4. If valid → next(); then waitUntil(settle).
  *   5. If invalid → 402 with error reason.
  *
- * The X-Payment header must be base64(JSON({x402Version, scheme, network, payload, resource})).
+ * X-Payment header value: base64(JSON(PaymentPayload))
+ *
+ * PaymentPayload shape:
+ *   { x402Version: 2,
+ *     accepted: { scheme, network, asset, amount, payTo, maxTimeoutSeconds, extra },
+ *     payload:  { transaction: base64VersionedTx } }
+ *
+ * Facilitator /verify body (x402 v2):
+ *   { x402Version, paymentPayload, paymentRequirements }
  */
 
 import type { MiddlewareHandler } from 'hono';
 import type { AppEnv } from '../env.js';
-import { USDC_MINT } from '../lib/constants.js';
+import { USDC_MINT, X402_SOLANA_NETWORK, X402_FEE_PAYER_ADDR } from '../lib/constants.js';
 
 const PAYMENT_HEADER = 'X-Payment';
 
-interface PaymentRequirements {
+// PaymentRequirements as defined by the x402 v2 core spec.
+interface PaymentReqs {
+  scheme:            string;
+  network:           string;
+  asset:             string;
+  amount:            string;
+  payTo:             string;
+  maxTimeoutSeconds: number;
+  extra:             Record<string, string>;
+}
+
+// The 402 body we return to agents (not the facilitator format — our own convention).
+interface PaymentRequired402 {
   x402Version: number;
-  accepts: Array<{
-    scheme:            string;
-    network:           string;
-    maxAmountRequired: string;
-    resource:          string;
-    description:       string;
-    mimeType:          string;
-    payTo:             string;
-    maxTimeoutSeconds: number;
-    asset:             string;
-    extra:             Record<string, string>;
-  }>;
-  error: string | null;
+  accepts:     Array<PaymentReqs & { resource: string; description: string; mimeType: string }>;
+  error:       string | null;
 }
 
 function buildRequirements(
   env: AppEnv['Bindings'],
   resource: string,
   error: string | null = null,
-): PaymentRequirements {
+): PaymentRequired402 {
   return {
     x402Version: 2,
     accepts: [{
       scheme:            'exact',
-      network:           'solana-mainnet',
-      maxAmountRequired: env.X402_CONVERT_AMOUNT,
+      network:           X402_SOLANA_NETWORK,
+      asset:             USDC_MINT,
+      amount:            env.X402_CONVERT_AMOUNT,
+      // payTo is the OWNER of the treasury USDC ATA (facilitator derives the ATA from this)
+      payTo:             env.X402_TREASURY_OWNER,
+      maxTimeoutSeconds: 300,
+      extra:             { name: 'USD Coin', version: '1', feePayer: X402_FEE_PAYER_ADDR },
       resource,
       description:       `Per-swap fee (${Number(env.X402_CONVERT_AMOUNT) / 1_000_000} USDC)`,
       mimeType:          'application/json',
-      payTo:             env.X402_TREASURY_ATA,
-      maxTimeoutSeconds: 300,
-      asset:             USDC_MINT,
-      extra: { name: 'USD Coin', version: '1' },
     }],
     error,
   };
@@ -67,7 +79,7 @@ export const x402: MiddlewareHandler<AppEnv> = async (c, next) => {
     return c.json(buildRequirements(c.env, resource), 402);
   }
 
-  // Decode the base64-encoded payment JSON.
+  // Decode the base64-encoded PaymentPayload JSON.
   let payObj: Record<string, unknown>;
   try {
     payObj = JSON.parse(atob(payment)) as Record<string, unknown>;
@@ -75,28 +87,39 @@ export const x402: MiddlewareHandler<AppEnv> = async (c, next) => {
     return c.json(buildRequirements(c.env, resource, 'Invalid X-Payment header encoding'), 402);
   }
 
+  // Build the PaymentRequirements the facilitator needs alongside the payload.
+  const reqs = buildRequirements(c.env, resource);
+  const paymentRequirements: PaymentReqs = reqs.accepts[0];
+
   // Verify with the facilitator.
+  // Body format (x402 v2): { x402Version, paymentPayload, paymentRequirements }
   let verifyRes: Response;
   try {
     verifyRes = await fetch(`${fac}/verify`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ ...payObj, resource }),
+      body:    JSON.stringify({
+        x402Version:        payObj.x402Version ?? 2,
+        paymentPayload:     payObj,
+        paymentRequirements,
+      }),
     });
   } catch (err) {
     return c.json(buildRequirements(c.env, resource, `Facilitator unreachable: ${err}`), 402);
   }
 
   if (!verifyRes.ok) {
+    const errText = await verifyRes.text().catch(() => '');
     return c.json(
-      buildRequirements(c.env, resource, `Facilitator verify HTTP ${verifyRes.status}`), 402,
+      buildRequirements(c.env, resource, `Facilitator verify HTTP ${verifyRes.status}: ${errText}`), 402,
     );
   }
 
-  const vj = await verifyRes.json() as { isValid: boolean; invalidReason?: string };
+  const vj = await verifyRes.json() as { isValid: boolean; invalidReason?: string; invalidMessage?: string };
   if (!vj.isValid) {
+    const reason = [vj.invalidReason, vj.invalidMessage].filter(Boolean).join(': ');
     return c.json(
-      buildRequirements(c.env, resource, vj.invalidReason ?? 'Payment verification failed'), 402,
+      buildRequirements(c.env, resource, reason || 'Payment verification failed'), 402,
     );
   }
 
@@ -108,7 +131,11 @@ export const x402: MiddlewareHandler<AppEnv> = async (c, next) => {
     fetch(`${fac}/settle`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({ ...payObj, resource }),
+      body:    JSON.stringify({
+        x402Version:        payObj.x402Version ?? 2,
+        paymentPayload:     payObj,
+        paymentRequirements,
+      }),
     }).catch(() => { /* best-effort */ }),
   );
 };
