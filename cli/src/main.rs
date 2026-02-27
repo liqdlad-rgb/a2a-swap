@@ -735,6 +735,22 @@ EXAMPLES:
         pair: String,
     },
 
+    /// List every pool deployed under the program with live reserves and spot prices
+    ///
+    /// Read-only — no keypair required, no transaction sent.
+    /// Requires a private RPC (Helius, QuickNode, etc.) — the public mainnet
+    /// endpoint disables getProgramAccounts.
+    #[command(
+        after_help = "\
+EXAMPLES:
+  a2a-swap active-pools
+  a2a-swap active-pools --json
+
+  # Spot price is reserveB / reserveA in raw atomic units.
+  # Set SOLANA_RPC_URL or pass --rpc to a Helius / private endpoint."
+    )]
+    ActivePools,
+
     /// Show total unclaimed LP fees across all positions
     ///
     /// Computes fees_owed (stored on-chain) PLUS fees accrued since the
@@ -924,6 +940,9 @@ fn main() -> Result<()> {
         }
         Commands::PoolInfo { pair } => {
             cmd_pool_info(&cli.rpc_url, pair, cli.json)?;
+        }
+        Commands::ActivePools => {
+            cmd_active_pools(&cli.rpc_url, cli.json)?;
         }
         Commands::MyFees => {
             cmd_my_fees(&cli.rpc_url, &cli.keypair, cli.json)?;
@@ -1544,6 +1563,111 @@ fn cmd_pool_info(rpc_url: &str, pair: &str, json_output: bool) -> Result<()> {
             println!("  Spot price       {spot_price:.8}  {sym_b}/{sym_a}  (raw atomic units)");
         } else {
             println!("  Spot price       — (pool is empty, no liquidity)");
+        }
+    }
+    Ok(())
+}
+
+// ─── active-pools ─────────────────────────────────────────────────────────────
+
+fn cmd_active_pools(rpc_url: &str, json_output: bool) -> Result<()> {
+    let program_id = Pubkey::from_str(PROGRAM_ID)?;
+    let client     = rpc(rpc_url);
+    let disc       = anchor_disc("account", "Pool");
+
+    let config = RpcProgramAccountsConfig {
+        filters: Some(vec![
+            RpcFilterType::DataSize(212),
+            RpcFilterType::Memcmp(Memcmp::new(0, MemcmpEncodedBytes::Bytes(disc.to_vec()))),
+        ]),
+        account_config: RpcAccountInfoConfig {
+            encoding: Some(UiAccountEncoding::Base64),
+            ..RpcAccountInfoConfig::default()
+        },
+        ..RpcProgramAccountsConfig::default()
+    };
+
+    let raw = client
+        .get_program_accounts_with_config(&program_id, config)
+        .context("getProgramAccounts failed — set --rpc to a Helius or private RPC endpoint")?;
+
+    if raw.is_empty() {
+        if json_output {
+            println!("{}", json!({ "status": "ok", "command": "active-pools", "count": 0, "pools": [] }));
+        } else {
+            println!("No pools found.");
+        }
+        return Ok(());
+    }
+
+    struct PoolEntry {
+        pubkey: Pubkey,
+        pool:   PoolState,
+        ra:     u64,
+        rb:     u64,
+    }
+
+    let mut entries: Vec<PoolEntry> = Vec::with_capacity(raw.len());
+    for (pk, acct) in &raw {
+        match parse_pool(&acct.data) {
+            Ok(pool) => {
+                let ra = client.get_account(&pool.token_a_vault)
+                    .ok()
+                    .and_then(|a| parse_token_amount(&a.data).ok())
+                    .unwrap_or(0);
+                let rb = client.get_account(&pool.token_b_vault)
+                    .ok()
+                    .and_then(|a| parse_token_amount(&a.data).ok())
+                    .unwrap_or(0);
+                entries.push(PoolEntry { pubkey: *pk, pool, ra, rb });
+            }
+            Err(e) => eprintln!("Warning: skipping malformed pool {pk}: {e}"),
+        }
+    }
+
+    if json_output {
+        let arr: Vec<_> = entries.iter().map(|e| {
+            let spot: f64 = if e.ra > 0 { e.rb as f64 / e.ra as f64 } else { 0.0 };
+            json!({
+                "pool":                e.pubkey.to_string(),
+                "token_a": {
+                    "symbol": resolve_symbol(&e.pool.token_a_mint),
+                    "mint":   e.pool.token_a_mint.to_string(),
+                    "vault":  e.pool.token_a_vault.to_string(),
+                    "reserve": e.ra,
+                },
+                "token_b": {
+                    "symbol": resolve_symbol(&e.pool.token_b_mint),
+                    "mint":   e.pool.token_b_mint.to_string(),
+                    "vault":  e.pool.token_b_vault.to_string(),
+                    "reserve": e.rb,
+                },
+                "lp_supply":          e.pool.lp_supply,
+                "fee_rate_bps":        e.pool.fee_rate_bps,
+                "fee_rate_pct":        e.pool.fee_rate_bps as f64 / 100.0,
+                "spot_price_b_per_a":  spot,
+            })
+        }).collect();
+        println!("{}", json!({ "status": "ok", "command": "active-pools", "count": arr.len(), "pools": arr }));
+    } else {
+        println!("─── Active Pools ({}) ──────────────────────────────────────────────", entries.len());
+        for (i, e) in entries.iter().enumerate() {
+            let sym_a  = resolve_symbol(&e.pool.token_a_mint);
+            let sym_b  = resolve_symbol(&e.pool.token_b_mint);
+            let spot: f64 = if e.ra > 0 { e.rb as f64 / e.ra as f64 } else { 0.0 };
+            println!();
+            println!("  [{}] {}  {}  {}", i + 1, e.pubkey, sym_a, sym_b);
+            println!("      Token A       {} ({})", sym_a, e.pool.token_a_mint);
+            println!("      Token B       {} ({})", sym_b, e.pool.token_b_mint);
+            println!("      Reserve A     {:>20}", e.ra);
+            println!("      Reserve B     {:>20}", e.rb);
+            println!("      LP supply     {:>20}", e.pool.lp_supply);
+            println!("      Fee rate      {} bps  ({:.2}%)", e.pool.fee_rate_bps, e.pool.fee_rate_bps as f64 / 100.0);
+            if e.ra > 0 {
+                println!("      Spot price    {spot:.8}  {sym_b}/{sym_a}");
+            } else {
+                println!("      Spot price    — (pool empty)");
+            }
         }
     }
     Ok(())

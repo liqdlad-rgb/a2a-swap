@@ -421,6 +421,70 @@ export class A2ASwapClient {
   }
 
   /**
+   * Fetch all Pool accounts deployed under this program.
+   *
+   * Returns live reserves, LP supply, spot price, and fee rate for every pool.
+   * Useful for agent discovery — call this once on startup to learn what pairs
+   * are available before routing a swap.
+   */
+  async activePools(): Promise<PoolInfo[]> {
+    const disc = accountDisc('Pool');
+
+    const accounts = await this.connection.getProgramAccounts(this.programId, {
+      filters: [
+        { dataSize: 212 },
+        {
+          memcmp: {
+            offset: 0,
+            bytes: Buffer.from(disc).toString('base64'),
+            encoding: 'base64',
+          } as { offset: number; bytes: string },
+        },
+      ],
+    });
+
+    const pools = accounts.flatMap(({ pubkey, account }) => {
+      try {
+        return [{ pubkey, poolState: parsePool(Buffer.from(account.data)) }];
+      } catch { return []; }
+    });
+
+    if (pools.length === 0) return [];
+
+    // Batch-fetch all vaults in one RPC call.
+    const vaultKeys = pools.flatMap(p => [
+      p.poolState.tokenAVault,
+      p.poolState.tokenBVault,
+    ]);
+    const vaultInfos = await this.connection.getMultipleAccountsInfo(vaultKeys);
+
+    const results: PoolInfo[] = [];
+    for (let i = 0; i < pools.length; i++) {
+      const { pubkey, poolState } = pools[i];
+      const vaultAInfo = vaultInfos[i * 2];
+      const vaultBInfo = vaultInfos[i * 2 + 1];
+
+      let reserveA = 0n, reserveB = 0n;
+      try { if (vaultAInfo) reserveA = parseTokenAmount(Buffer.from(vaultAInfo.data)); } catch { /* skip */ }
+      try { if (vaultBInfo) reserveB = parseTokenAmount(Buffer.from(vaultBInfo.data)); } catch { /* skip */ }
+
+      results.push({
+        pool:       pubkey,
+        mintA:      poolState.tokenAMint,
+        mintB:      poolState.tokenBMint,
+        vaultA:     poolState.tokenAVault,
+        vaultB:     poolState.tokenBVault,
+        reserveA,
+        reserveB,
+        lpSupply:   poolState.lpSupply,
+        feeRateBps: poolState.feeRateBps,
+        spotPrice:  reserveA === 0n ? 0 : Number(reserveB) / Number(reserveA),
+      });
+    }
+    return results;
+  }
+
+  /**
    * Fetch pool state plus current reserves and spot price.
    */
   async poolInfo(mintA: PublicKey, mintB: PublicKey): Promise<PoolInfo> {

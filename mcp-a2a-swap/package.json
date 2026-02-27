@@ -1,6 +1,6 @@
 {
   "name": "@liqdlad/mcp-a2a-swap",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "MCP server for A2A-Swap — exposes swap, liquidity, and pool tools for AI agents on Solana",
   "author": "A2A-Swap Contributors",
   "license": "MIT",
