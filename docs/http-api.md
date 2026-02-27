@@ -1,6 +1,6 @@
 # HTTP API
 
-A stateless JSON API running on Cloudflare Workers — call it from any language, any runtime, with nothing installed. No SDK, no wallet library, no Rust.
+A stateless JSON API running on Cloudflare Workers (Hono) — call it from any language, any runtime, with nothing installed. No SDK, no wallet library, no Rust.
 
 **Live endpoint:** `https://a2a-swap-api.a2a-swap.workers.dev`
 
@@ -9,25 +9,26 @@ A stateless JSON API running on Cloudflare Workers — call it from any language
 ## Why use the API?
 
 - **Zero install** — just `curl`, `fetch`, `requests`, or any HTTP client
-- **Language-agnostic** — Python, Go, Ruby, shell scripts, Zapier — anything that speaks HTTP
-- **No private key on the server** — `POST /convert` returns a ready-to-sign instruction; your agent signs and submits to Solana itself
+- **Language-agnostic** — Python, Go, Ruby, shell scripts, anything that speaks HTTP
+- **No private key on the server** — `POST /convert` returns a ready-to-sign Solana transaction; your agent signs and submits it independently
 - **Stateless** — every request is independent; no sessions, no auth tokens
+- **x402 micropayments** — agents pay 0.001 USDC per swap transaction using the [x402 protocol](https://x402.org); no API keys, no OAuth
 
 ---
 
 ## Endpoints
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| `GET` | `/` | — | Service info and endpoint listing |
-| `GET` | `/health` | — | Liveness check |
-| `POST` | `/simulate` | — | Quote a swap: estimated output, fees, price impact |
-| `POST` | `/convert` | — | Build a ready-to-sign swap instruction |
-| `GET` | `/pool-info` | — | Pool reserves, spot price, LP supply, fee rate |
-| `GET` | `/my-positions` | — | All LP positions owned by a wallet |
-| `GET` | `/my-fees` | — | Claimable and pending fees per position |
+| Method | Path | Payment | Description |
+|--------|------|---------|-------------|
+| `GET` | `/` | free | API index — version, program ID, endpoint listing |
+| `GET` | `/health` | free | Liveness check |
+| `POST` | `/simulate` | free | Quote a swap: amount-out, fees, price impact |
+| `POST` | `/convert` | **0.001 USDC (x402)** | Build a ready-to-sign swap transaction |
+| `GET` | `/pool-info` | free | Pool reserves, LP supply, fee rate |
+| `GET` | `/my-positions` | free | All LP positions owned by a wallet |
+| `GET` | `/my-fees` | free | Claimable and pending fees per position |
 
-All responses are `application/json`. Errors return `{ "error": "<message>" }` with an appropriate HTTP status code.
+All amounts are in **raw atomic units** (lamports, micro-USDC, etc.) as decimal strings. All responses are `application/json`. Errors return `{ "error": "<message>" }` with an appropriate HTTP status code.
 
 ---
 
@@ -41,11 +42,18 @@ curl https://a2a-swap-api.a2a-swap.workers.dev/
 
 ```json
 {
-  "name": "a2a-swap-api",
-  "version": "0.1.0",
+  "name":    "a2a-swap-api",
+  "version": "0.2.0",
   "program": "8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq",
-  "network": "mainnet-beta",
-  "endpoints": ["/", "/health", "/simulate", "/convert", "/pool-info", "/my-positions", "/my-fees"]
+  "docs":    "https://github.com/liqdlad-rgb/a2a-swap",
+  "endpoints": [
+    { "method": "GET",  "path": "/health",       "auth": "free" },
+    { "method": "POST", "path": "/simulate",      "auth": "free" },
+    { "method": "POST", "path": "/convert",       "auth": "x402 (0.001 USDC)" },
+    { "method": "GET",  "path": "/pool-info",     "auth": "free" },
+    { "method": "GET",  "path": "/my-positions",  "auth": "free" },
+    { "method": "GET",  "path": "/my-fees",       "auth": "free" }
+  ]
 }
 ```
 
@@ -58,163 +66,207 @@ curl https://a2a-swap-api.a2a-swap.workers.dev/health
 ```
 
 ```json
-{ "status": "ok" }
+{ "status": "ok", "version": "0.2.0" }
 ```
 
 ---
 
 ## `POST /simulate`
 
-Quote a swap without building or sending a transaction. Safe to call as frequently as needed — no rate limit beyond Cloudflare's standard free-tier.
+Quote a swap without building or submitting a transaction. Free, no authentication required.
 
 **Request body:**
 
 | Field | Type | Description |
 |-------|------|-------------|
-| `in` | string | Input token — `SOL`, `USDC`, `USDT`, or base-58 mint |
-| `out` | string | Output token — same |
-| `amount` | number | Amount in atomic units (lamports / micro-USDC) |
+| `tokenIn` | string | Input token — `SOL`, `USDC`, `USDT`, or base-58 mint |
+| `tokenOut` | string | Output token — same |
+| `amount` | string | Amount in atomic units, e.g. `"1000000000"` for 1 SOL |
 
 ```bash
 curl -X POST https://a2a-swap-api.a2a-swap.workers.dev/simulate \
      -H 'Content-Type: application/json' \
-     -d '{"in":"SOL","out":"USDC","amount":1000000000}'
+     -d '{"tokenIn":"SOL","tokenOut":"USDC","amount":"1000000000"}'
 ```
 
 **Response:**
 
 ```json
 {
-  "pool":           "BtBL5wpMbmabFimeUmLtjZAAeh4xWWf76NSpefMXb4TC",
-  "direction":      "AtoB",
-  "amountIn":       1000000000,
-  "protocolFee":    20000,
-  "lpFee":          2994,
-  "afterFees":      999977006,
-  "estimatedOut":   149988450,
-  "effectiveRate":  0.149988,
-  "priceImpactPct": 0.013,
-  "reserveIn":      9999000000,
-  "reserveOut":     1500000000,
-  "feeRateBps":     30
+  "pool":             "BtBL5wpMbmabFimeUmLtjZAAeh4xWWf76NSpefMXb4TC",
+  "a_to_b":           true,
+  "amount_in":        "1000000000",
+  "protocol_fee":     "200000",
+  "net_pool_input":   "999800000",
+  "lp_fee":           "2999400",
+  "after_fees":       "996800600",
+  "estimated_out":    "38000105",
+  "effective_rate":   0.038000105,
+  "price_impact_pct": 49.74,
+  "fee_rate_bps":     30,
+  "reserve_in":       "1007194643",
+  "reserve_out":      "76396454"
 }
 ```
+
+> **Note:** `price_impact_pct` is high on small pools. As liquidity deepens, typical small swaps will show <1%.
 
 ---
 
 ## `POST /convert`
 
-Build a swap instruction. The server returns the serialized instruction — **the agent signs and submits the transaction itself**. No private key ever touches the server.
+Build an unsigned Solana swap transaction. The server returns a base64-encoded `Transaction` — your agent decodes it, signs with their wallet, and submits to any RPC node. **No private key ever touches the server.**
 
-**Request body:**
+This endpoint is protected by the [x402 micropayment protocol](https://x402.org). The cost is **0.001 USDC** per call, paid in a single Solana transaction before the request is served.
 
-| Field | Type | Required | Description |
-|-------|------|:--------:|-------------|
-| `in` | string | ✓ | Input token |
-| `out` | string | ✓ | Output token |
-| `amount` | number | ✓ | Amount in atomic units |
-| `agent` | string | ✓ | Agent's wallet public key (base-58) |
-| `minAmountOut` | number | | Minimum acceptable output (slippage guard). Default: 0 |
+### x402 payment flow
+
+Without an `X-Payment` header the server returns `HTTP 402` with payment requirements:
 
 ```bash
 curl -X POST https://a2a-swap-api.a2a-swap.workers.dev/convert \
      -H 'Content-Type: application/json' \
-     -d '{
-       "in":     "SOL",
-       "out":    "USDC",
-       "amount": 1000000000,
-       "agent":  "HBtQDNcpHh1zLWSN4VhrnLxS5D83BRpZVfRamf2753sd"
-     }'
+     -d '{"tokenIn":"SOL","tokenOut":"USDC","amount":"1000000000","wallet":"<PUBKEY>"}'
+# → HTTP 402
 ```
-
-**Response:**
 
 ```json
 {
-  "programId": "8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq",
-  "accounts": [
-    { "pubkey": "HBtQD...", "isSigner": true,  "isWritable": true  },
-    { "pubkey": "BtBL5...", "isSigner": false, "isWritable": true  },
-    ...
-  ],
-  "data": "base64-encoded-instruction-data...",
-  "simulate": {
-    "estimatedOut": 149988450,
-    "priceImpactPct": 0.013
-  }
+  "x402Version": 2,
+  "accepts": [{
+    "scheme":            "exact",
+    "network":           "solana-mainnet",
+    "maxAmountRequired": "1000",
+    "asset":             "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+    "payTo":             "hPYQVAGYv6Dmm8unZTXGN9pGwtuDm2PWSre4Cx1GnCS",
+    "description":       "Per-swap fee (0.001 USDC)",
+    "maxTimeoutSeconds": 300
+  }],
+  "error": null
 }
 ```
 
-**Submitting the transaction (TypeScript example):**
+An x402-compatible agent:
+1. Reads the `accepts` object and pays 0.001 USDC to the `payTo` address.
+2. Re-sends the request with `X-Payment: <base64(paymentJSON)>`.
+3. The server verifies with `facilitator.payai.network`, serves the transaction, and settles on-chain.
 
-```typescript
-import { Connection, PublicKey, Transaction, TransactionInstruction } from '@solana/web3.js';
+### Request body
 
-const resp = await fetch('https://a2a-swap-api.a2a-swap.workers.dev/convert', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ in: 'SOL', out: 'USDC', amount: 1_000_000_000, agent: wallet.publicKey.toBase58() }),
-});
-const { programId, accounts, data } = await resp.json();
+| Field | Type | Required | Description |
+|-------|------|:--------:|-------------|
+| `tokenIn` | string | ✓ | Input token (`SOL`, `USDC`, `USDT`, or mint) |
+| `tokenOut` | string | ✓ | Output token |
+| `amount` | string | ✓ | Input amount in atomic units |
+| `wallet` | string | ✓ | Agent's wallet public key (base-58) — fee payer + signer |
+| `slippageBps` | number | | Slippage tolerance in bps (default: `50` = 0.5%) |
 
-const ix = new TransactionInstruction({
-  programId: new PublicKey(programId),
-  keys: accounts.map(a => ({ pubkey: new PublicKey(a.pubkey), isSigner: a.isSigner, isWritable: a.isWritable })),
-  data: Buffer.from(data, 'base64'),
-});
-
-const tx = new Transaction().add(ix);
-const sig = await connection.sendTransaction(tx, [walletKeypair]);
+```bash
+curl -X POST https://a2a-swap-api.a2a-swap.workers.dev/convert \
+     -H 'Content-Type: application/json' \
+     -H 'X-Payment: <base64-payment-token>' \
+     -d '{
+       "tokenIn":    "SOL",
+       "tokenOut":   "USDC",
+       "amount":     "1000000000",
+       "wallet":     "HBtQDNcpHh1zLWSN4VhrnLxS5D83BRpZVfRamf2753sd",
+       "slippageBps": 50
+     }'
 ```
 
-**Python example:**
+### Response
+
+```json
+{
+  "transaction": "<base64-encoded unsigned Solana Transaction>",
+  "simulation": {
+    "pool":             "BtBL5wpMbmabFimeUmLtjZAAeh4xWWf76NSpefMXb4TC",
+    "estimated_out":    "38000105",
+    "price_impact_pct": 49.74,
+    "fee_rate_bps":     30
+  },
+  "pool":    "BtBL5wpMbmabFimeUmLtjZAAeh4xWWf76NSpefMXb4TC",
+  "min_out": "37050000"
+}
+```
+
+### Submitting the transaction — TypeScript
+
+```typescript
+import { Connection, Transaction } from '@solana/web3.js';
+
+const resp = await fetch('https://a2a-swap-api.a2a-swap.workers.dev/convert', {
+  method:  'POST',
+  headers: { 'Content-Type': 'application/json', 'X-Payment': paymentToken },
+  body:    JSON.stringify({
+    tokenIn:  'SOL',
+    tokenOut: 'USDC',
+    amount:   '1000000000',
+    wallet:   walletKeypair.publicKey.toBase58(),
+  }),
+});
+
+const { transaction } = await resp.json();
+
+// Decode, sign, and submit
+const tx = Transaction.from(Buffer.from(transaction, 'base64'));
+tx.sign(walletKeypair);
+const sig = await connection.sendRawTransaction(tx.serialize());
+```
+
+### Submitting the transaction — Python
 
 ```python
-import requests, base64, json
+import requests, base64
 from solders.keypair import Keypair
 from solders.transaction import Transaction
-from solders.instruction import Instruction, AccountMeta
-from solders.pubkey import Pubkey
 
 resp = requests.post(
     'https://a2a-swap-api.a2a-swap.workers.dev/convert',
-    json={'in': 'SOL', 'out': 'USDC', 'amount': 1_000_000_000, 'agent': str(keypair.pubkey())}
+    headers={'Content-Type': 'application/json', 'X-Payment': payment_token},
+    json={
+        'tokenIn':  'SOL',
+        'tokenOut': 'USDC',
+        'amount':   '1000000000',
+        'wallet':   str(keypair.pubkey()),
+    },
 ).json()
 
-ix = Instruction(
-    program_id=Pubkey.from_string(resp['programId']),
-    accounts=[AccountMeta(Pubkey.from_string(a['pubkey']), a['isSigner'], a['isWritable']) for a in resp['accounts']],
-    data=base64.b64decode(resp['data']),
-)
-# sign and send with your preferred Solana Python client
+tx = Transaction.from_bytes(base64.b64decode(resp['transaction']))
+tx.sign([keypair], recent_blockhash=tx.message.recent_blockhash)
+# submit via your preferred Solana Python client
 ```
+
+> **wSOL note:** if `tokenIn` is SOL, ensure your wSOL ATA is funded before submitting. The API does not wrap native SOL automatically.
 
 ---
 
 ## `GET /pool-info`
 
-Read pool state — reserves, price, LP supply, fee rate.
+Read live pool state — reserves, LP supply, fee rate.
 
-**Query parameters:**
+**Query parameters** (use one):
 
-| Param | Description |
-|-------|-------------|
-| `pair` | Token pair, e.g. `SOL-USDC` |
+| Param | Example | Description |
+|-------|---------|-------------|
+| `tokenA` + `tokenB` | `?tokenA=SOL&tokenB=USDC` | Resolve pool by token pair |
+| `pool` | `?pool=BtBL5w...` | Look up pool by address directly |
 
 ```bash
-curl "https://a2a-swap-api.a2a-swap.workers.dev/pool-info?pair=SOL-USDC"
+curl "https://a2a-swap-api.a2a-swap.workers.dev/pool-info?tokenA=SOL&tokenB=USDC"
 ```
 
 ```json
 {
-  "pool":       "BtBL5wpMbmabFimeUmLtjZAAeh4xWWf76NSpefMXb4TC",
-  "mintA":      "So11111111111111111111111111111111111111112",
-  "mintB":      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
-  "reserveA":   9999000000,
-  "reserveB":   1500000000,
-  "lpSupply":   3872983,
-  "feeRateBps": 30,
-  "spotPrice":  0.150015
+  "pool":          "BtBL5wpMbmabFimeUmLtjZAAeh4xWWf76NSpefMXb4TC",
+  "token_a_mint":  "So11111111111111111111111111111111111111112",
+  "token_b_mint":  "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "token_a_vault": "5jdNMXcor1j9gWWAPiVuWQHYbm5Th4pWipzTaPE5teAZ",
+  "token_b_vault": "9DSj6iWAWHxTfK4wfeox3SKnRyFVkwnL15Q92zYt311r",
+  "reserve_a":     "1007194643",
+  "reserve_b":     "76396454",
+  "lp_supply":     "277385786",
+  "fee_rate_bps":  30
 }
 ```
 
@@ -228,21 +280,25 @@ List all LP positions owned by a wallet.
 
 | Param | Description |
 |-------|-------------|
-| `pubkey` | Wallet public key (base-58) |
+| `wallet` | Wallet public key (base-58) |
 
 ```bash
-curl "https://a2a-swap-api.a2a-swap.workers.dev/my-positions?pubkey=HBtQDNcpHh1zLWSN4VhrnLxS5D83BRpZVfRamf2753sd"
+curl "https://a2a-swap-api.a2a-swap.workers.dev/my-positions?wallet=HBtQDNcpHh1zLWSN4VhrnLxS5D83BRpZVfRamf2753sd"
 ```
 
 ```json
 {
+  "wallet": "HBtQDNcpHh1zLWSN4VhrnLxS5D83BRpZVfRamf2753sd",
+  "count": 1,
   "positions": [
     {
-      "address":          "AxKp...",
-      "pool":             "BtBL5wpMbmabFimeUmLtjZAAeh4xWWf76NSpefMXb4TC",
-      "lpShares":         1936491,
-      "autoCompound":     true,
-      "compoundThreshold": 1000000
+      "address":            "AxKp...",
+      "pool":               "BtBL5wpMbmabFimeUmLtjZAAeh4xWWf76NSpefMXb4TC",
+      "lp_shares":          "1936491",
+      "fees_owed_a":        "0",
+      "fees_owed_b":        "0",
+      "auto_compound":      true,
+      "compound_threshold": "0"
     }
   ]
 }
@@ -252,49 +308,55 @@ curl "https://a2a-swap-api.a2a-swap.workers.dev/my-positions?pubkey=HBtQDNcpHh1z
 
 ## `GET /my-fees`
 
-Show claimable and pending fees for all positions owned by a wallet.
+Show total claimable fees (on-chain `fees_owed` + accrued-but-unsynced `pending`) for all positions owned by a wallet.
 
 **Query parameters:**
 
 | Param | Description |
 |-------|-------------|
-| `pubkey` | Wallet public key (base-58) |
+| `wallet` | Wallet public key (base-58) |
 
 ```bash
-curl "https://a2a-swap-api.a2a-swap.workers.dev/my-fees?pubkey=HBtQDNcpHh1zLWSN4VhrnLxS5D83BRpZVfRamf2753sd"
+curl "https://a2a-swap-api.a2a-swap.workers.dev/my-fees?wallet=HBtQDNcpHh1zLWSN4VhrnLxS5D83BRpZVfRamf2753sd"
 ```
 
 ```json
 {
-  "totalFeesA": 12450,
-  "totalFeesB": 1870,
-  "positions": [
+  "wallet": "HBtQDNcpHh1zLWSN4VhrnLxS5D83BRpZVfRamf2753sd",
+  "fees": [
     {
-      "address":   "AxKp...",
-      "pool":      "BtBL5...",
-      "feesOwedA": 12450,
-      "feesOwedB": 1870
+      "position":    "AxKp...",
+      "pool":        "BtBL5wpMbmabFimeUmLtjZAAeh4xWWf76NSpefMXb4TC",
+      "fees_owed_a": "21281",
+      "fees_owed_b": "0",
+      "pending_a":   "0",
+      "pending_b":   "0",
+      "lp_shares":   "277385786"
     }
   ]
 }
 ```
 
+`fees_owed_*` is the amount synced on-chain from the last `claim_fees` call. `pending_*` is the additional amount earned since then, computed locally from `fee_growth_global`. Both are in raw atomic units.
+
 ---
 
 ## Self-hosting
 
-Deploy your own instance from the [`a2a-swap-api/`](https://github.com/liqdlad-rgb/a2a-swap/tree/main/a2a-swap-api) directory:
+Deploy your own instance from [`a2a-swap-api/`](https://github.com/liqdlad-rgb/a2a-swap/tree/main/a2a-swap-api):
 
 ```bash
 git clone https://github.com/liqdlad-rgb/a2a-swap
 cd a2a-swap/a2a-swap-api
-npm install -g wrangler
-wrangler deploy
+npm install
+npx wrangler deploy
 ```
 
-To use a private RPC (avoids public rate limits), set a secret after deploying:
+Set a private RPC to avoid public rate limits (recommended — the public endpoint disables `getProgramAccounts`):
 
 ```bash
-wrangler secret put SOLANA_RPC_URL
-# enter your RPC URL when prompted
+npx wrangler secret put SOLANA_RPC_URL
+# paste your Helius / QuickNode / Triton URL
 ```
+
+To point x402 fees at your own treasury, update `X402_TREASURY_ATA` in `wrangler.toml` before deploying.

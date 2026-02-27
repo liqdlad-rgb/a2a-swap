@@ -76,6 +76,8 @@ A JSON manifest embedded in the program binary. Any agent can read the protocol'
 |----------|----------------|
 | Program | [`8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq`](https://solscan.io/account/8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq) |
 | SOL/USDC pool | `BtBL5wpMbmabFimeUmLtjZAAeh4xWWf76NSpefMXb4TC` |
+| SOL/ELIZAOS pool | `GkNGBQjStmY7LUFe7w6RrRSYBEqeicDMEmwE2c4eQy8q` |
+| SOL/MOLTID pool | `4Ri8qHrBzT8GB2Yys61La1u9fsweSU8notb6YE6gSZwR` |
 | HTTP API | `https://a2a-swap-api.a2a-swap.workers.dev` |
 | GitHub | [liqdlad-rgb/a2a-swap](https://github.com/liqdlad-rgb/a2a-swap) |
 | npm (TypeScript SDK) | [`@liqdlad/a2a-swap-sdk`](https://www.npmjs.com/package/@liqdlad/a2a-swap-sdk) |
