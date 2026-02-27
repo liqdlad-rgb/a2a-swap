@@ -79,9 +79,20 @@ function createServer() {
                 },
             },
             {
+                name: 'active_pools',
+                description: 'List every liquidity pool deployed on A2A-Swap with live reserves, spot price, LP supply, and fee rate. ' +
+                    'No arguments required. Use this for discovery — call it on startup to learn which token pairs are available ' +
+                    'before routing a swap. Read-only — no wallet required.',
+                inputSchema: {
+                    type: 'object',
+                    properties: {},
+                    required: [],
+                },
+            },
+            {
                 name: 'pool_info',
-                description: 'Fetch current state of an A2A-Swap liquidity pool: reserves, spot price, LP supply, fee rate. ' +
-                    'Read-only — no wallet required.',
+                description: 'Fetch current state of a specific A2A-Swap liquidity pool: reserves, spot price, LP supply, fee rate. ' +
+                    'Use active_pools first if you don\'t know which pairs exist. Read-only — no wallet required.',
                 inputSchema: {
                     type: 'object',
                     properties: {
@@ -229,6 +240,19 @@ function createServer() {
                                 ].join('\n'),
                             }],
                     };
+                }
+                // ── active_pools ──────────────────────────────────────────────────────
+                case 'active_pools': {
+                    const client = buildClient();
+                    const pools = await client.activePools();
+                    if (pools.length === 0) {
+                        return { content: [{ type: 'text', text: 'No pools found.' }] };
+                    }
+                    const lines = [`Active pools (${pools.length}):`];
+                    for (const [i, p] of pools.entries()) {
+                        lines.push(`  [${i + 1}] ${p.pool.toBase58()}`, `      Mint A:    ${p.mintA.toBase58()}`, `      Mint B:    ${p.mintB.toBase58()}`, `      Reserve A: ${fmt(p.reserveA)}`, `      Reserve B: ${fmt(p.reserveB)}`, `      LP supply: ${fmt(p.lpSupply)}`, `      Fee rate:  ${p.feeRateBps} bps (${p.feeRateBps / 100}%)`, `      Spot price: ${p.spotPrice.toFixed(8)}  (B per A)`);
+                    }
+                    return { content: [{ type: 'text', text: lines.join('\n') }] };
                 }
                 // ── pool_info ─────────────────────────────────────────────────────────
                 case 'pool_info': {
