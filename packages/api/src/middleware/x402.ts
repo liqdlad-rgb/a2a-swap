@@ -123,19 +123,49 @@ export const x402: MiddlewareHandler<AppEnv> = async (c, next) => {
     );
   }
 
-  // Payment valid — serve the request.
-  await next();
+  // CRITICAL: Settle synchronously BEFORE serving the request.
+  // This ensures payment is captured before any swap execution.
+  // If settlement fails, return 500 so the agent can retry.
 
-  // Settle asynchronously so it doesn't block the response.
-  c.executionCtx?.waitUntil(
+  const settlementBody = JSON.stringify({
+    x402Version:        payObj.x402Version ?? 2,
+    paymentPayload:     payObj,
+    paymentRequirements,
+  });
+
+  // 7-second timeout for settlement
+  const settleWithTimeout = Promise.race([
     fetch(`${fac}/settle`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
-      body:    JSON.stringify({
-        x402Version:        payObj.x402Version ?? 2,
-        paymentPayload:     payObj,
-        paymentRequirements,
-      }),
-    }).catch(() => { /* best-effort */ }),
-  );
+      body:    settlementBody,
+    }),
+    new Promise<Response>((_, reject) =>
+      setTimeout(() => reject(new Error('Settlement timeout')), 7000)
+    ),
+  ]);
+
+  let settleRes: Response;
+  try {
+    settleRes = await settleWithTimeout;
+  } catch (err) {
+    // Settlement failed — don't execute the swap, return error for agent to retry
+    console.error('Payment settlement failed:', err);
+    return c.json(
+      { error: 'payment_settlement_failed', retryAfter: 5 },
+      500,
+    );
+  }
+
+  if (!settleRes.ok) {
+    const errText = await settleRes.text().catch(() => '');
+    console.error('Payment settlement HTTP error:', settleRes.status, errText);
+    return c.json(
+      { error: 'payment_settlement_failed', retryAfter: 5 },
+      500,
+    );
+  }
+
+  // Settlement confirmed — now serve the request.
+  await next();
 };

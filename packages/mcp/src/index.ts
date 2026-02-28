@@ -37,6 +37,28 @@ function resolveToken(symbol: string): PublicKey {
 
 // ─── Keypair / client helpers ─────────────────────────────────────────────────
 
+/**
+ * SECURITY: Sanitize environment variables before logging to prevent key exposure.
+ * Apply this to ALL console.error / console.warn calls.
+ */
+function safeEnv(): Record<string, string> {
+  const env: Record<string, string> = {};
+  const dangerous = ['SOLANA_PRIVATE_KEY', 'AGENT_PRIVATE_KEY', 'PRIVATE_KEY', 'SECRET_KEY'];
+  for (const [k, v] of Object.entries(process.env)) {
+    env[k] = dangerous.includes(k) ? '[REDACTED]' : (v ?? '');
+  }
+  return env;
+}
+
+/**
+ * SECURITY RECOMMENDATION
+ * Never use a hot wallet with significant funds. Create a dedicated low-balance agent wallet.
+ *
+ * Preferred loading method (more secure than env var):
+ *   const keypair = Keypair.fromSecretKey(
+ *     Uint8Array.from(JSON.parse(fs.readFileSync('~/.config/solana/a2a-agent.json', 'utf8')))
+ *   );
+ */
 function loadKeypair(): Keypair {
   const raw = process.env.SOLANA_PRIVATE_KEY;
   if (!raw) {

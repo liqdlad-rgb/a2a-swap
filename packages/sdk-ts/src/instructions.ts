@@ -251,7 +251,44 @@ export function claimFeesIx(
 
 // ─── swap ─────────────────────────────────────────────────────────────────────
 
-/** Build the `swap` instruction. */
+/**
+ * Validate swap parameters to catch common errors early.
+ *
+ * Checks:
+ * - amountIn must be > 0
+ * - Warning if minAmountOut > amountIn (possible parameter swap)
+ * - Soft warning for very high slippage (>30%)
+ */
+function validateSwapParams(amountIn: bigint, minAmountOut: bigint): void {
+  if (amountIn === 0n) {
+    throw new Error('amountIn must be > 0');
+  }
+
+  // Warning: possible parameter swap
+  if (minAmountOut > amountIn) {
+    console.warn('⚠️ minAmountOut > amountIn — did you accidentally swap the parameters?');
+  }
+
+  // Soft warning for very high slippage (>30%)
+  if (minAmountOut > amountIn * 130n / 100n) {
+    const slippagePct = Number((minAmountOut - amountIn) * 100n / amountIn);
+    console.warn(`⚠️ Very high slippage requested (${slippagePct}%)`);
+  }
+}
+
+/**
+ * Build the `swap` instruction.
+ *
+ * Byte layout (25 bytes total):
+ * - offset 0-7:   discriminator (sha256("global:swap")[0..8])
+ * - offset 8-15:  amount_in (u64, little-endian)
+ * - offset 16-23: min_amount_out (u64, little-endian)
+ * - offset 24:    a_to_b (bool: 1 = A→B, 0 = B→A)
+ *
+ * ⚠️ CRITICAL: Parameter order must match Anchor handler:
+ *   handler(ctx, amount_in: u64, min_amount_out: u64, a_to_b: bool)
+ *   Wrong order causes cryptic SlippageExceeded errors.
+ */
 export function swapIx(
   programId:       PublicKey,
   agent:           PublicKey,
@@ -267,6 +304,9 @@ export function swapIx(
   minAmountOut:    bigint,
   aToB:            boolean,
 ): TransactionInstruction {
+  // Validate parameters before building instruction
+  validateSwapParams(amountIn, minAmountOut);
+
   // 8 disc + 8 + 8 + 1 = 25 bytes
   const data = Buffer.alloc(25);
   instructionDisc('swap').copy(data, 0);

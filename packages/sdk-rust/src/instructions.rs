@@ -169,7 +169,41 @@ pub fn provide_liquidity_ix(
 
 // ─── swap ─────────────────────────────────────────────────────────────────────
 
+/// Validate swap parameters to catch common errors early.
+///
+/// Checks:
+/// - amount_in must be > 0
+/// - Warning if min_amount_out > amount_in (possible parameter swap)
+/// - Soft warning for very high slippage (>30%)
+fn validate_swap_params(amount_in: u64, min_amount_out: u64) {
+    if amount_in == 0 {
+        eprintln!("ERROR: amount_in must be > 0");
+        panic!("amount_in must be > 0");
+    }
+
+    // Warning: possible parameter swap
+    if min_amount_out > amount_in {
+        eprintln!("WARNING: min_amount_out > amount_in — did you accidentally swap the parameters?");
+    }
+
+    // Soft warning for very high slippage (>30%)
+    if min_amount_out > amount_in * 130 / 100 {
+        let slippage_pct = ((min_amount_out - amount_in) as f64 / amount_in as f64) * 100.0;
+        eprintln!("WARNING: Very high slippage requested ({:.1}%)", slippage_pct);
+    }
+}
+
 /// Build the `swap` instruction.
+///
+/// Byte layout (25 bytes total):
+/// - offset 0-7:   discriminator (sha256("global:swap")[0..8])
+/// - offset 8-15:  amount_in (u64, little-endian)
+/// - offset 16-23: min_amount_out (u64, little-endian)
+/// - offset 24:    a_to_b (bool: 1 = A→B, 0 = B→A)
+///
+/// ⚠️ CRITICAL: Parameter order must match Anchor handler:
+///   handler(ctx, amount_in: u64, min_amount_out: u64, a_to_b: bool)
+///   Wrong order causes cryptic SlippageExceeded errors.
 ///
 /// Pass `pool.token_a_vault` and `pool.token_b_vault` regardless of swap
 /// direction — the program reads `a_to_b` to determine which transfers to make.
@@ -189,6 +223,9 @@ pub fn swap_ix(
     min_amount_out:    u64,
     a_to_b:            bool,
 ) -> Instruction {
+    // Validate parameters before building instruction
+    validate_swap_params(amount_in, min_amount_out);
+
     let mut data = disc("swap").to_vec();
     data.extend_from_slice(&amount_in.to_le_bytes());
     data.extend_from_slice(&min_amount_out.to_le_bytes());
