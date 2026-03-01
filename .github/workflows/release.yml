@@ -45,6 +45,12 @@ jobs:
         if: matrix.cross
         run: cargo install cross --locked
 
+      - name: Install OpenSSL (for aarch64 Linux cross)
+        if: matrix.cross
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev pkg-config
+
       - name: Build (native)
         if: "!matrix.cross"
         run: cargo build --release -p a2a-swap-cli --target ${{ matrix.target }}
