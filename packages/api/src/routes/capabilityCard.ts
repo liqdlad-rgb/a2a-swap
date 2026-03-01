@@ -37,6 +37,8 @@ router.get('/', async (c) => {
     fee_structure: {
       protocol_fee_bps: 20,
       protocol_fee_pct: '0.020%',
+      protocol_fee_zero_for_molt: true,
+      molt_collection: 'EvXNCtaoVuC1NQLQswAnqsbQKPgVTdjrrLKa8MpMJiLf',
       typical_lp_fee_bps: 25,
       x402_per_swap_usdc: '0.001',
     },
