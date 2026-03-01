@@ -37,6 +37,7 @@ curl -X POST https://a2a-swap-api.a2a-swap.workers.dev/convert \
 | `/health` | GET | free | Liveness check |
 | `/simulate` | POST | free | Quote: amount-out, price-impact, full fee breakdown |
 | `/convert` | POST | **0.001 USDC** ([x402](https://x402.org)) | Build unsigned swap transaction |
+| `/verify-molt` | GET | free | Verify .molt agent NFT for zero protocol fees |
 | `/pool-info` | GET | free | Reserves, LP supply, fee rate |
 | `/my-positions` | GET | free | All LP positions for a wallet |
 | `/my-fees` | GET | free | Claimable + pending fees per position |
@@ -70,6 +71,39 @@ An x402-compatible agent:
 4. Receives a base64-encoded unsigned `Transaction` — signs it and submits to any RPC.
 
 **Self-host:** `cd packages/api && wrangler deploy`. Set your RPC via `wrangler secret put SOLANA_RPC_URL`.
+
+---
+
+### .molt Zero-Protocol-Fee Agents
+
+A2A-Swap waives the 0.020% protocol fee for agents holding a verified .molt NFT from the Molt collection. This is designed for the Molt.id ecosystem where AI agents have on-chain identity.
+
+**How it works:**
+
+1. **Verify the agent** — Call `GET /verify-molt?wallet=<AGENT_PUBKEY>`:
+   ```bash
+   curl "https://a2a-swap-api.a2a-swap.workers.dev/verify-molt?wallet=YOUR_WALLET_ADDRESS"
+   # → { "verified": true, "asset": "...", "pda": "..." } or { "verified": false }
+   ```
+
+2. **Submit swap** — The protocol automatically detects .molt agents at execution time by verifying the token account owner against the Molt collection's execute program.
+
+3. **Zero protocol fee** — Verified .molt agents pay only the LP fee (25 bps for SOL/MOLTID pool), not the 0.020% protocol fee.
+
+**Molt integration details:**
+
+| Item | Value |
+|------|-------|
+| Molt Collection | `EvXNCtaoVuC1NQLQswAnqsbQKPgVTdjrrLKa8MpMJiLf` |
+| Molt Execute Program | `CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d` |
+| Verification endpoint | `GET /verify-molt?wallet=<base58>` |
+| Capability card field | `fee_structure.protocol_fee_zero_for_molt: true` |
+
+**Pool with .molt:**
+
+| Pair | Pool Address | Fee |
+|------|-------------|-----|
+| SOL / MOLTID | [`4Ri8qHrBzT8GB2Yys61La1u9fsweSU8notb6YE6gSZwR`](https://solscan.io/account/4Ri8qHrBzT8GB2Yys61La1u9fsweSU8notb6YE6gSZwR) | 25 bps (LP only) |
 
 ---
 
@@ -460,10 +494,13 @@ amount_out   = reserve_out × after_fees / (reserve_in + after_fees)
 | Fee | Rate | Destination |
 |-----|------|-------------|
 | Protocol fee | 0.020% fixed | Treasury PDA token account |
+| **Protocol fee (.molt)** | **0%** | — |
 | LP fee | 1–100 bps (pool-specific) | Pool vaults (accrues to LPs) |
 
 The protocol fee is skimmed before LP fee calculation to keep the LP math clean.
 LPs only earn on the net amount after the protocol fee.
+
+**Zero-fee for .molt agents:** Agents holding a verified .molt NFT from the Molt collection (`EvXNCtaoVuC1NQLQswAnqsbQKPgVTdjrrLKa8MpMJiLf`) pay **0% protocol fee**. The LP fee still applies. Use `/verify-molt?wallet=<pubkey>` to check verification status.
 
 ---
 
