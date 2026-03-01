@@ -5,7 +5,7 @@
 
 **Program ID:** `8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq`
 **Network:** Solana mainnet-beta
-**Protocol fee:** 0.020% (to on-chain treasury PDA)
+**Protocol fee:** 0.020% (to on-chain treasury PDA) — **0% for .molt agents**
 **LP fee range:** 1–100 bps (0.01%–1.00%, set per pool)
 
 ---
