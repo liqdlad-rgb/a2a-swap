@@ -25,6 +25,7 @@ import positionsRouter    from './routes/positions.js';
 import activePoolsRouter  from './routes/activePools.js';
 import capabilityRouter   from './routes/capabilityCard.js';
 import compareRouter      from './routes/compareQuotes.js';
+import verifyMoltRouter  from './routes/verifyMolt.js';
 import { VERSION }        from './lib/constants.js';
 
 const app = new Hono<AppEnv>();
@@ -72,6 +73,7 @@ app.use('/swap',     x402);
 app.route('/swap',   convertRouter);   // primary path
 app.use('/convert',  x402);
 app.route('/convert', convertRouter);  // backwards-compatible alias
+app.route('/verify-molt', verifyMoltRouter);  // Molt NFT verification for zero-fee
 
 // ── Error handler ─────────────────────────────────────────────────────────────
 app.onError((err, c) => {

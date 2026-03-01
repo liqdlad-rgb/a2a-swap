@@ -26,6 +26,33 @@ export const ASSOCIATED_TOKEN_PROGRAM_ID = new PublicKey(
   'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL',
 );
 
+/// Molt Collection address (Metaplex Core NFT collection for .molt domains)
+export const MOLT_COLLECTION = new PublicKey(
+  'EvXNCtaoVuC1NQLQswAnqsbQKPgVTdjrrLKa8MpMJiLf',
+);
+
+/// Molt Execute Program - derives agent PDA for executing with .molt domains
+export const MOLT_EXECUTE_PROGRAM = new PublicKey(
+  'CoREENxT6tW1HoK8ypY1SxRMZTcVPm7R94rH4PZNhX7d',
+);
+
+const MPL_CORE_EXECUTE_SEED = Buffer.from('mpl-core-execute');
+
+/**
+ * Derive the expected Molt agent PDA for a given asset
+ *
+ * PDA = find_program_address(
+ *     [b"mpl-core-execute", asset.key.as_ref()],
+ *     MOLT_EXECUTE_PROGRAM
+ * )
+ */
+export function deriveMoltAgentPda(assetKey: PublicKey): PublicKey {
+  return PublicKey.findProgramAddressSync(
+    [MPL_CORE_EXECUTE_SEED, assetKey.toBuffer()],
+    MOLT_EXECUTE_PROGRAM,
+  )[0];
+}
+
 // ─── PDA seeds ────────────────────────────────────────────────────────────────
 
 const POOL_SEED           = Buffer.from('pool');
