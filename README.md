@@ -1,23 +1,37 @@
-# A2A-Swap
+# 🚀 A2A-Swap
 
-> Lightweight constant-product AMM for autonomous AI agents on Solana.
-> **No install required** — call the live HTTP API from any language, any runtime.
+> **Lightweight constant-product AMM** built exclusively for autonomous AI agents on Solana.
 
-**Program ID:** `8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq`
-**Network:** Solana mainnet-beta
-**Protocol fee:** 0.020% (to on-chain treasury PDA) — **0% for .molt agents**
+**No install. No SDK required.**  
+Just call the live HTTP API from any language, any runtime.
+
+**Program ID:** `8XJfG4mHqRZjByAd7HxHdEALfB8jVtJVQsdhGEmysTFq`  
+**Network:** Solana mainnet-beta  
+**Protocol fee:** 0.020% (to on-chain treasury) — **0% for verified .molt agents**  
 **LP fee range:** 1–100 bps (0.01%–1.00%, set per pool)
 
 ---
 
-## HTTP API — fastest path to a swap
+## 📋 Table of Contents
+- [⚡ Quick Start – HTTP API](#-quick-start-http-api)
+- [🔄 Why A2A-Swap instead of Jupiter?](#-why-a2a-swap-instead-of-jupiter)
+- [🏊 Active Pools](#-active-pools)
+- [🔌 Integrations](#-integrations)
+- [📦 Repo Structure](#-repo-structure)
+- [💰 Protocol & Fee Details](#-protocol--fee-details)
+- [🛠️ Advanced Features](#-advanced-features)
+- [❌ Error Reference](#-error-reference)
+- [🗺️ Roadmap](#-roadmap)
+- [📄 License](#-license)
 
-A stateless JSON API on Cloudflare Workers. No SDK, no install, no keypair config on the server.
+---
+
+## ⚡ Quick Start – HTTP API
 
 **Base URL:** `https://a2a-swap-api.a2a-swap.workers.dev`
 
+### Quote a swap (free)
 ```bash
-# Quote a swap — free, no auth
 curl -X POST https://a2a-swap-api.a2a-swap.workers.dev/simulate \
   -H 'Content-Type: application/json' \
   -d '{"tokenIn":"USDC","tokenOut":"SOL","amount":"10000"}'
