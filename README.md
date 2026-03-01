@@ -13,16 +13,18 @@ Just call the live HTTP API from any language, any runtime.
 ---
 
 ## 📋 Table of Contents
-- [⚡ Quick Start – HTTP API](#-quick-start-http-api)
-- [🔄 Why A2A-Swap instead of Jupiter?](#-why-a2a-swap-instead-of-jupiter)
-- [🏊 Active Pools](#-active-pools)
-- [🔌 Integrations](#-integrations)
-- [📦 Repo Structure](#-repo-structure)
-- [💰 Protocol & Fee Details](#-protocol--fee-details)
-- [🛠️ Advanced Features](#-advanced-features)
-- [❌ Error Reference](#-error-reference)
-- [🗺️ Roadmap](#-roadmap)
-- [📄 License](#-license)
+- [⚡ Quick Start – HTTP API](#quick-start-http-api)
+- [🔄 Why A2A-Swap instead of Jupiter?](#why-a2a-swap-instead-of-jupiter)
+- [🏊 Active Pools](#active-pools)
+- [🔌 Integrations](#integrations)
+- [📦 Repo Structure](#repo-structure)
+- [💰 Protocol & Fee Details](#protocol--fee-details)
+- [🛠️ Advanced Features](#advanced-features)
+- [❌ Error Reference](#error-reference)
+- [🗺️ Roadmap](#roadmap)
+- [📄 License](#license)
+
+---
 
 ---
 
@@ -120,7 +122,7 @@ A2A-Swap waives the 0.020% protocol fee for agents holding a verified .molt NFT 
 | SOL / MOLTID | [`4Ri8qHrBzT8GB2Yys61La1u9fsweSU8notb6YE6gSZwR`](https://solscan.io/account/4Ri8qHrBzT8GB2Yys61La1u9fsweSU8notb6YE6gSZwR) | 25 bps (LP only) |
 
 ---
-
+<a id="active-pools"></a>
 ## Repo structure
 
 ```
@@ -162,7 +164,7 @@ a2a-swap/
 A2A-Swap is designed for the case where the **caller is a bot**: no UI, deterministic paths, stable fees, and SDKs that emit typed structs.
 
 ---
-
+<a id="repo-structure"></a>
 ## Active Pools
 
 | Pair | Pool Address | Fee | TVL |
@@ -459,7 +461,7 @@ Bots can earn passive income by acting as liquidity providers:
 3. …swaps happen, fees accumulate in pool vaults…
 4. fees auto-compound into LP shares (or claim manually via `claim-fees` CLI / SDK)
 ```
-
+<a id="protocol--fee-details"></a>
 ### Fee accounting
 
 Fees are tracked with a Q64.64 accumulator (`fee_growth_global`) stored on the `Pool` account.
@@ -540,7 +542,7 @@ await sendAndConfirmTransaction(conn, tx, [agentKeypair, approverKeypair]);
 ```
 
 ---
-
+<a id="error-reference"></a>
 ## Error reference
 
 | Error | Cause | Fix |
@@ -553,7 +555,7 @@ await sendAndConfirmTransaction(conn, tx, [agentKeypair, approverKeypair]);
 | `Unauthorized` | Approver signature missing | Ensure both agent and approver keys are present |
 
 ---
-
+<a id="roadmap"></a>
 ## Roadmap
 
 ### v0.1 (current — mainnet)
@@ -580,7 +582,7 @@ await sendAndConfirmTransaction(conn, tx, [agentKeypair, approverKeypair]);
 - [ ] **Security audit**
 
 ---
-
+<a id="license"></a>
 ## License
 
 MIT — see [LICENSE](./LICENSE)
